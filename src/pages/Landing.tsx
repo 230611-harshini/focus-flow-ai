@@ -80,7 +80,7 @@ const Landing = () => {
         {/* LiquidEther Background */}
         <div className="absolute inset-0 overflow-hidden">
           <LiquidEther
-            colors={['#5227FF', '#FF9FFC', '#B19EEF']}
+            colors={['#080c15', '#25c8ee', '#388ef4']}
             mouseForce={20}
             cursorSize={100}
             isViscous={false}
