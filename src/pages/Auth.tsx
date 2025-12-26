@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
   Chrome
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -26,28 +27,60 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signIn, signUp, user } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate authentication
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    toast({
-      title: isLogin ? "Welcome back!" : "Account created!",
-      description: isLogin 
-        ? "Successfully signed in to your account." 
-        : "Your account has been created successfully.",
-    });
-
-    setIsLoading(false);
-    navigate("/dashboard");
-  };
-
-  const inputVariants = {
-    focus: { scale: 1.02, borderColor: "hsl(var(--primary))" },
-    blur: { scale: 1, borderColor: "hsl(var(--border))" },
+    try {
+      if (isLogin) {
+        const { error } = await signIn(email, password);
+        if (error) {
+          toast({
+            title: "Sign in failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Welcome back!",
+            description: "Successfully signed in to your account.",
+          });
+          navigate("/dashboard");
+        }
+      } else {
+        const { error } = await signUp(email, password, name);
+        if (error) {
+          toast({
+            title: "Sign up failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Account created!",
+            description: "Your account has been created successfully.",
+          });
+          navigate("/dashboard");
+        }
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -136,6 +169,7 @@ const Auth = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-12 pr-12"
                   required
+                  minLength={6}
                 />
                 <button
                   type="button"
@@ -192,11 +226,11 @@ const Auth = () => {
 
           {/* Social Login */}
           <div className="grid grid-cols-2 gap-4">
-            <Button variant="glass" size="lg" className="w-full">
+            <Button variant="glass" size="lg" className="w-full" disabled>
               <Chrome className="w-5 h-5" />
               Google
             </Button>
-            <Button variant="glass" size="lg" className="w-full">
+            <Button variant="glass" size="lg" className="w-full" disabled>
               <Github className="w-5 h-5" />
               GitHub
             </Button>
