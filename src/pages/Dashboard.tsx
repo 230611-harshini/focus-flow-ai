@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -22,28 +22,25 @@ import {
   Pause,
   RotateCcw,
   Menu,
-  X
+  X,
+  Bell
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-interface Task {
-  id: string;
-  title: string;
-  priority: "high" | "medium" | "low";
-  dueDate: string;
-  completed: boolean;
-}
+import { useAuth } from "@/hooks/useAuth";
+import { useTasks } from "@/hooks/useTasks";
+import { useNotifications } from "@/hooks/useNotifications";
+import { ReminderModal } from "@/components/ReminderModal";
+import { NotificationDropdown } from "@/components/NotificationDropdown";
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
-  const location = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, signOut, loading: authLoading } = useAuth();
+  const { tasks, loading: tasksLoading, addTask, updateTask, toggleComplete, deleteTask, addReminder } = useTasks();
+  const { unreadCount } = useNotifications();
+  
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [tasks, setTasks] = useState<Task[]>([
-    { id: "1", title: "Complete project proposal", priority: "high", dueDate: "Today", completed: false },
-    { id: "2", title: "Review team feedback", priority: "medium", dueDate: "Tomorrow", completed: false },
-    { id: "3", title: "Update documentation", priority: "low", dueDate: "This week", completed: true },
-    { id: "4", title: "Schedule client meeting", priority: "high", dueDate: "Today", completed: false },
-  ]);
   const [newTask, setNewTask] = useState("");
   const [selectedPriority, setSelectedPriority] = useState<"high" | "medium" | "low">("medium");
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
@@ -52,11 +49,22 @@ const Dashboard = () => {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [editingTask, setEditingTask] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [selectedTaskForReminder, setSelectedTaskForReminder] = useState<{ id: string; title: string; dueDate?: Date } | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
 
   const aiSuggestions = [
-    "Break down 'Complete project proposal' into smaller subtasks",
-    "Schedule focus time for high-priority tasks in the morning",
-    "Consider delegating 'Review team feedback' if overloaded",
+    "Break down high-priority tasks into smaller subtasks",
+    "Schedule focus time for demanding tasks in the morning",
+    "Set reminders 15 minutes before important deadlines",
   ];
 
   // Timer logic
@@ -82,49 +90,96 @@ const Dashboard = () => {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const addTask = () => {
+  const handleAddTask = async () => {
     if (!newTask.trim()) return;
-    const task: Task = {
-      id: Date.now().toString(),
-      title: newTask,
-      priority: selectedPriority,
-      dueDate: "Today",
-      completed: false,
-    };
-    setTasks([task, ...tasks]);
+    
+    const dueDateObj = dueDate ? new Date(dueDate) : undefined;
+    await addTask(newTask, selectedPriority, dueDateObj);
     setNewTask("");
-    toast({
-      title: "Task added",
-      description: `"${newTask}" has been added to your list.`,
-    });
+    setDueDate("");
   };
 
-  const toggleComplete = (id: string) => {
-    setTasks(tasks.map(task => 
-      task.id === id ? { ...task, completed: !task.completed } : task
-    ));
+  const handleToggleComplete = async (id: string) => {
+    await toggleComplete(id);
   };
 
-  const deleteTask = (id: string) => {
-    setTasks(tasks.filter(task => task.id !== id));
-    toast({
-      title: "Task deleted",
-      description: "The task has been removed from your list.",
-    });
+  const handleDeleteTask = async (id: string) => {
+    await deleteTask(id);
   };
 
-  const startEdit = (task: Task) => {
+  const startEdit = (task: { id: string; title: string }) => {
     setEditingTask(task.id);
     setEditValue(task.title);
   };
 
-  const saveEdit = (id: string) => {
+  const saveEdit = async (id: string) => {
     if (!editValue.trim()) return;
-    setTasks(tasks.map(task => 
-      task.id === id ? { ...task, title: editValue } : task
-    ));
+    await updateTask(id, { title: editValue });
     setEditingTask(null);
     setEditValue("");
+  };
+
+  const openReminderModal = (task: { id: string; title: string; due_date: string | null }) => {
+    setSelectedTaskForReminder({
+      id: task.id,
+      title: task.title,
+      dueDate: task.due_date ? new Date(task.due_date) : undefined,
+    });
+    setShowReminderModal(true);
+  };
+
+  const handleSetReminder = async (reminder: { time: Date; type: 'email' | 'in_app' | 'both' }) => {
+    if (!selectedTaskForReminder || !user) return;
+
+    // Save reminder to database
+    await addReminder(selectedTaskForReminder.id, reminder.time, reminder.type);
+
+    // Get user profile for email
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email, full_name')
+      .eq('user_id', user.id)
+      .single();
+
+    // Schedule the reminder via edge function
+    const timeUntilReminder = reminder.time.getTime() - Date.now();
+    
+    if (timeUntilReminder > 0 && timeUntilReminder < 24 * 60 * 60 * 1000) {
+      // If reminder is within 24 hours, trigger it via edge function
+      setTimeout(async () => {
+        try {
+          const { error } = await supabase.functions.invoke('send-reminder', {
+            body: {
+              taskId: selectedTaskForReminder.id,
+              taskTitle: selectedTaskForReminder.title,
+              dueDate: selectedTaskForReminder.dueDate?.toISOString() || new Date().toISOString(),
+              userEmail: profile?.email || user.email,
+              userName: profile?.full_name || user.email?.split('@')[0],
+              reminderType: reminder.type,
+            },
+          });
+          
+          if (error) {
+            console.error('Error sending reminder:', error);
+          }
+        } catch (err) {
+          console.error('Failed to send reminder:', err);
+        }
+      }, timeUntilReminder);
+    }
+
+    toast({
+      title: "Reminder set!",
+      description: `You'll be reminded at ${reminder.time.toLocaleString()}`,
+    });
+
+    setShowReminderModal(false);
+    setSelectedTaskForReminder(null);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
   };
 
   const priorityColors = {
@@ -138,6 +193,21 @@ const Dashboard = () => {
     { icon: BarChart3, label: "Insights", path: "/insights", active: false },
     { icon: Settings, label: "Settings", path: "#", active: false },
   ];
+
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+  const userEmail = user?.email || '';
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -192,15 +262,15 @@ const Dashboard = () => {
             <div className="p-4 border-t border-border/50">
               <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-foreground font-semibold">
-                  J
+                  {userName.charAt(0).toUpperCase()}
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium text-sm">John Doe</p>
-                  <p className="text-xs text-muted-foreground">john@example.com</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{userName}</p>
+                  <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
                 </div>
-                <Link to="/">
+                <button onClick={handleSignOut}>
                   <LogOut className="w-5 h-5 text-muted-foreground hover:text-foreground cursor-pointer transition-colors" />
-                </Link>
+                </button>
               </div>
             </div>
           </motion.aside>
@@ -223,12 +293,33 @@ const Dashboard = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="mb-8 pt-12 lg:pt-0"
+            className="mb-8 pt-12 lg:pt-0 flex items-start justify-between"
           >
-            <h1 className="font-heading text-2xl sm:text-3xl font-bold mb-2">
-              Good morning, <span className="gradient-text">John</span>
-            </h1>
-            <p className="text-muted-foreground">Let's make today productive!</p>
+            <div>
+              <h1 className="font-heading text-2xl sm:text-3xl font-bold mb-2">
+                Good morning, <span className="gradient-text">{userName}</span>
+              </h1>
+              <p className="text-muted-foreground">Let's make today productive!</p>
+            </div>
+            
+            {/* Notifications */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-3 rounded-xl bg-card/80 backdrop-blur-xl border border-border hover:border-primary/30 transition-colors relative"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+              <NotificationDropdown 
+                isOpen={showNotifications} 
+                onClose={() => setShowNotifications(false)} 
+              />
+            </div>
           </motion.div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -241,13 +332,13 @@ const Dashboard = () => {
                 transition={{ delay: 0.1, duration: 0.5 }}
                 className="glass-card p-6"
               >
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex-1 flex gap-3">
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <Input
                       placeholder="Add a new task..."
                       value={newTask}
                       onChange={(e) => setNewTask(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && addTask()}
+                      onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
                       className="flex-1"
                     />
                     <div className="relative">
@@ -285,10 +376,21 @@ const Dashboard = () => {
                       </AnimatePresence>
                     </div>
                   </div>
-                  <Button onClick={addTask} variant="glow" className="shrink-0">
-                    <Plus className="w-5 h-5" />
-                    Add Task
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex-1">
+                      <Input
+                        type="datetime-local"
+                        value={dueDate}
+                        onChange={(e) => setDueDate(e.target.value)}
+                        className="w-full"
+                        placeholder="Due date (optional)"
+                      />
+                    </div>
+                    <Button onClick={handleAddTask} variant="glow" className="shrink-0">
+                      <Plus className="w-5 h-5" />
+                      Add Task
+                    </Button>
+                  </div>
                 </div>
               </motion.div>
 
@@ -300,82 +402,106 @@ const Dashboard = () => {
                 className="glass-card p-6"
               >
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="font-heading text-xl font-semibold">Today's Tasks</h2>
+                  <h2 className="font-heading text-xl font-semibold">Your Tasks</h2>
                   <span className="text-sm text-muted-foreground">
-                    {tasks.filter(t => !t.completed).length} remaining
+                    {tasks.filter(t => !t.is_completed).length} remaining
                   </span>
                 </div>
 
-                <div className="space-y-3">
-                  <AnimatePresence>
-                    {tasks.map((task, index) => (
-                      <motion.div
-                        key={task.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                        transition={{ delay: index * 0.05 }}
-                        className={`flex items-center gap-4 p-4 rounded-xl border transition-all duration-300 ${
-                          task.completed 
-                            ? "bg-muted/30 border-border/30" 
-                            : "bg-card/50 border-border hover:border-primary/30"
-                        }`}
-                      >
-                        <button
-                          onClick={() => toggleComplete(task.id)}
-                          className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-                            task.completed 
-                              ? "bg-primary border-primary" 
-                              : "border-muted-foreground hover:border-primary"
+                {tasksLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full"
+                    />
+                  </div>
+                ) : tasks.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Target className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-muted-foreground">No tasks yet. Add your first task above!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <AnimatePresence>
+                      {tasks.map((task, index) => (
+                        <motion.div
+                          key={task.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: 20 }}
+                          transition={{ delay: index * 0.05 }}
+                          className={`flex items-center gap-4 p-4 rounded-xl border transition-all duration-300 ${
+                            task.is_completed 
+                              ? "bg-muted/30 border-border/30" 
+                              : "bg-card/50 border-border hover:border-primary/30"
                           }`}
                         >
-                          {task.completed && <Check className="w-4 h-4 text-primary-foreground" />}
-                        </button>
+                          <button
+                            onClick={() => handleToggleComplete(task.id)}
+                            className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                              task.is_completed 
+                                ? "bg-primary border-primary" 
+                                : "border-muted-foreground hover:border-primary"
+                            }`}
+                          >
+                            {task.is_completed && <Check className="w-4 h-4 text-primary-foreground" />}
+                          </button>
 
-                        <div className="flex-1 min-w-0">
-                          {editingTask === task.id ? (
-                            <Input
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onKeyDown={(e) => e.key === "Enter" && saveEdit(task.id)}
-                              onBlur={() => saveEdit(task.id)}
-                              className="h-8"
-                              autoFocus
-                            />
-                          ) : (
-                            <p className={`font-medium truncate ${task.completed ? "line-through text-muted-foreground" : ""}`}>
-                              {task.title}
-                            </p>
-                          )}
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className={`text-xs px-2 py-0.5 rounded-md border ${priorityColors[task.priority]}`}>
-                              {task.priority}
-                            </span>
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {task.dueDate}
-                            </span>
+                          <div className="flex-1 min-w-0">
+                            {editingTask === task.id ? (
+                              <Input
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && saveEdit(task.id)}
+                                onBlur={() => saveEdit(task.id)}
+                                className="h-8"
+                                autoFocus
+                              />
+                            ) : (
+                              <p className={`font-medium truncate ${task.is_completed ? "line-through text-muted-foreground" : ""}`}>
+                                {task.title}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-3 mt-1 flex-wrap">
+                              <span className={`text-xs px-2 py-0.5 rounded-md border ${priorityColors[task.priority as keyof typeof priorityColors]}`}>
+                                {task.priority}
+                              </span>
+                              {task.due_date && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  {new Date(task.due_date).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        </div>
 
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => startEdit(task)}
-                            className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => deleteTask(task.id)}
-                            className="p-2 rounded-lg hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => openReminderModal(task)}
+                              className="p-2 rounded-lg hover:bg-primary/10 transition-colors text-muted-foreground hover:text-primary"
+                              title="Set reminder"
+                            >
+                              <Bell className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => startEdit(task)}
+                              className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTask(task.id)}
+                              className="p-2 rounded-lg hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                )}
               </motion.div>
             </div>
 
@@ -496,6 +622,18 @@ const Dashboard = () => {
           </div>
         </div>
       </main>
+
+      {/* Reminder Modal */}
+      <ReminderModal
+        isOpen={showReminderModal}
+        onClose={() => {
+          setShowReminderModal(false);
+          setSelectedTaskForReminder(null);
+        }}
+        onSave={handleSetReminder}
+        taskTitle={selectedTaskForReminder?.title || ''}
+        dueDate={selectedTaskForReminder?.dueDate}
+      />
     </div>
   );
 };
