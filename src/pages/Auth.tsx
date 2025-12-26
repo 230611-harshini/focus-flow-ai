@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
   Chrome
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import Spline from '@splinetool/react-spline';
 import { useAuth } from "@/hooks/useAuth";
 
 const Auth = () => {
@@ -250,36 +251,36 @@ const Auth = () => {
         </motion.div>
       </div>
 
-      {/* Right Side - Decorative */}
-      <div className="hidden lg:flex flex-1 relative overflow-hidden bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10">
-        {/* Animated Background */}
+      {/* Right Side - Spline 3D */}
+      <div className="hidden lg:flex flex-1 relative overflow-hidden bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5">
         <div className="absolute inset-0">
-          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary/30 rounded-full blur-3xl animate-pulse-slow" />
-          <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-secondary/30 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 right-1/3 w-48 h-48 bg-accent/30 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '2s' }} />
-        </div>
-
-        {/* Content */}
-        <div className="relative z-10 flex flex-col items-center justify-center p-12">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.8 }}
-            className="text-center"
-          >
-            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary via-secondary to-accent flex items-center justify-center mx-auto mb-8 animate-float">
-              <Zap className="w-12 h-12 text-primary-foreground" />
+          <Suspense fallback={
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
             </div>
-            <h2 className="font-heading text-3xl font-bold mb-4">
-              Your Productivity,{" "}
-              <span className="gradient-text">Supercharged</span>
-            </h2>
-            <p className="text-muted-foreground max-w-sm mx-auto">
-              Join thousands of professionals who use FocusFlow to manage tasks, 
-              stay focused, and achieve more every day.
-            </p>
-          </motion.div>
+          }>
+            <Spline
+              scene="https://prod.spline.design/T-TNpCZrnf3ST2cv/scene.splinecode"
+              style={{ width: '100%', height: '100%' }}
+            />
+          </Suspense>
         </div>
+        
+        {/* Text Overlay */}
+        {/* <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none z-10 px-8"> */}
+          {/* <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary via-secondary to-accent flex items-center justify-center mb-8 shadow-lg">
+            <Zap className="w-8 h-8 text-primary-foreground" />
+          </div>
+          <h2 className="font-heading text-4xl xl:text-5xl font-bold text-foreground mb-2">
+            Your Productivity,
+          </h2>
+          <h2 className="font-heading text-4xl xl:text-5xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent mb-6">
+            Supercharged
+          </h2>
+          <p className="text-muted-foreground text-lg max-w-md">
+            Join thousands of professionals who use FocusFlow to manage tasks, stay focused, and achieve more every day.
+          </p> */}
+        {/* </div> */}
       </div>
     </div>
   );
