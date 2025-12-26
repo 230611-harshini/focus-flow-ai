@@ -113,6 +113,16 @@ export default {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-5px)" },
         },
+        spotlight: {
+          "0%": {
+            opacity: "0",
+            transform: "translate(-72%, -62%) scale(0.5)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "translate(-50%,-40%) scale(1)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -125,6 +135,7 @@ export default {
         "shimmer": "shimmer 2s linear infinite",
         "pulse-ring": "pulse-ring 1.5s ease-out infinite",
         "bounce-subtle": "bounce-subtle 2s ease-in-out infinite",
+        spotlight: "spotlight 2s ease 0.75s 1 forwards",
       },
     },
   },
