@@ -14,11 +14,10 @@ export function SplineHero() {
         {/* Left content */}
         <div className="flex-1 p-8 relative z-10 flex flex-col justify-center">
           <h2 className="text-3xl md:text-4xl font-heading font-bold bg-clip-text text-transparent bg-gradient-to-b from-foreground to-muted-foreground">
-            Interactive 3D
+            AI / Smart Work Theme
           </h2>
           <p className="mt-4 text-muted-foreground max-w-lg">
-            Bring your productivity to life with beautiful 3D visualizations. 
-            Create immersive experiences that capture attention and enhance your workflow.
+            AI-powered productivity platform that combines intelligent focus tools with immersive 3D design to help users work with clarity, efficiency, and purpose.
           </p>
         </div>
 
