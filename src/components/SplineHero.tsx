@@ -1,4 +1,4 @@
-import { SplineScene } from "@/components/ui/splite";
+import { AnimatedScene3D } from "@/components/ui/splite";
 import { Card } from "@/components/ui/card";
 import { Spotlight } from "@/components/ui/spotlight";
 
@@ -24,10 +24,7 @@ export function SplineHero() {
 
         {/* Right content - 3D Scene */}
         <div className="flex-1 relative">
-          <SplineScene 
-            scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
-            className="w-full h-full"
-          />
+          <AnimatedScene3D className="w-full h-full" />
         </div>
       </div>
     </Card>
