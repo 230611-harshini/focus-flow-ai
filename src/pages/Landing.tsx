@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { SplineHero } from "@/components/SplineHero";
 import LiquidEther from "@/components/LiquidEther";
+import DemoVideoModal from "@/components/DemoVideoModal";
 import { 
   Sparkles, 
   Target, 
@@ -15,6 +17,8 @@ import {
 } from "lucide-react";
 
 const Landing = () => {
+  const [isDemoOpen, setIsDemoOpen] = useState(false);
+
   const features = [
     {
       icon: Sparkles,
@@ -45,6 +49,8 @@ const Landing = () => {
   ];
 
   return (
+    <>
+    <DemoVideoModal isOpen={isDemoOpen} onClose={() => setIsDemoOpen(false)} />
     <div className="min-h-screen bg-background overflow-hidden">
       {/* Navigation */}
       <motion.nav
@@ -137,11 +143,9 @@ const Landing = () => {
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <Link to="/dashboard">
-                <Button variant="glass" size="xl">
+              <Button variant="glass" size="xl" onClick={() => setIsDemoOpen(true)}>
                   View Demo
                 </Button>
-              </Link>
             </motion.div>
 
             {/* Stats */}
@@ -270,6 +274,7 @@ const Landing = () => {
         </div>
       </footer>
     </div>
+    </>
   );
 };
 
