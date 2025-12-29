@@ -12,18 +12,15 @@ import {
   Plus,
   Sparkles,
   Target,
-  Clock,
   Check,
   Trash2,
   Edit3,
   Calendar,
   ChevronDown,
-  Play,
-  Pause,
-  RotateCcw,
   Menu,
   X,
-  Bell
+  Bell,
+  Lightbulb
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,6 +28,11 @@ import { useTasks } from "@/hooks/useTasks";
 import { useNotifications } from "@/hooks/useNotifications";
 import { ReminderModal } from "@/components/ReminderModal";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
+import { DailyStreak } from "@/components/dashboard/DailyStreak";
+import { AmbientSounds } from "@/components/dashboard/AmbientSounds";
+import { QuickStats } from "@/components/dashboard/QuickStats";
+import { MotivationalQuote } from "@/components/dashboard/MotivationalQuote";
+import { EnhancedTimer } from "@/components/dashboard/EnhancedTimer";
 import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
@@ -45,14 +47,13 @@ const Dashboard = () => {
   const [selectedPriority, setSelectedPriority] = useState<"high" | "medium" | "low">("medium");
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
-  const [focusTime, setFocusTime] = useState(25 * 60);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [editingTask, setEditingTask] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [selectedTaskForReminder, setSelectedTaskForReminder] = useState<{ id: string; title: string; dueDate?: Date } | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [focusMinutes, setFocusMinutes] = useState(0);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -62,33 +63,11 @@ const Dashboard = () => {
   }, [user, authLoading, navigate]);
 
   const aiSuggestions = [
-    "Break down high-priority tasks into smaller subtasks",
-    "Schedule focus time for demanding tasks in the morning",
-    "Set reminders 15 minutes before important deadlines",
+    { text: "Break down high-priority tasks into smaller subtasks", icon: Target },
+    { text: "Schedule focus time for demanding tasks in the morning", icon: Sparkles },
+    { text: "Set reminders 15 minutes before important deadlines", icon: Bell },
+    { text: "Use the Pomodoro technique for better concentration", icon: Lightbulb },
   ];
-
-  // Timer logic
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isTimerRunning && focusTime > 0) {
-      interval = setInterval(() => {
-        setFocusTime((prev) => prev - 1);
-      }, 1000);
-    } else if (focusTime === 0) {
-      setIsTimerRunning(false);
-      toast({
-        title: "Focus session complete!",
-        description: "Great job! Take a short break.",
-      });
-    }
-    return () => clearInterval(interval);
-  }, [isTimerRunning, focusTime, toast]);
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
 
   const handleAddTask = async () => {
     if (!newTask.trim()) return;
@@ -131,21 +110,17 @@ const Dashboard = () => {
   const handleSetReminder = async (reminder: { time: Date; type: 'email' | 'in_app' | 'both' }) => {
     if (!selectedTaskForReminder || !user) return;
 
-    // Save reminder to database
     await addReminder(selectedTaskForReminder.id, reminder.time, reminder.type);
 
-    // Get user profile for email
     const { data: profile } = await supabase
       .from('profiles')
       .select('email, full_name')
       .eq('user_id', user.id)
       .single();
 
-    // Schedule the reminder via edge function
     const timeUntilReminder = reminder.time.getTime() - Date.now();
     
     if (timeUntilReminder > 0 && timeUntilReminder < 24 * 60 * 60 * 1000) {
-      // If reminder is within 24 hours, trigger it via edge function
       setTimeout(async () => {
         try {
           const { error } = await supabase.functions.invoke('send-reminder', {
@@ -182,6 +157,10 @@ const Dashboard = () => {
     navigate("/");
   };
 
+  const handleSessionComplete = () => {
+    setFocusMinutes(prev => prev + 25);
+  };
+
   const priorityColors = {
     high: "bg-priority-high/20 text-priority-high border-priority-high/30",
     medium: "bg-priority-medium/20 text-priority-medium border-priority-medium/30",
@@ -196,6 +175,21 @@ const Dashboard = () => {
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
   const userEmail = user?.email || '';
+
+  // Calculate stats
+  const completedTasks = tasks.filter(t => t.is_completed).length;
+  const pendingTasks = tasks.filter(t => !t.is_completed).length;
+  const todayCompleted = tasks.filter(t => {
+    if (!t.completed_at) return false;
+    const completedDate = new Date(t.completed_at);
+    const today = new Date();
+    return completedDate.toDateString() === today.toDateString();
+  }).length;
+  const productivity = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
+
+  // Greeting based on time
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
   if (authLoading) {
     return (
@@ -287,17 +281,17 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="mb-8 pt-12 lg:pt-0 flex items-start justify-between"
+            className="mb-6 pt-12 lg:pt-0 flex items-start justify-between"
           >
             <div>
               <h1 className="font-heading text-2xl sm:text-3xl font-bold mb-2">
-                Good morning, <span className="gradient-text">{userName}</span>
+                {greeting}, <span className="gradient-text">{userName}</span>
               </h1>
               <p className="text-muted-foreground">Let's make today productive!</p>
             </div>
@@ -322,6 +316,21 @@ const Dashboard = () => {
             </div>
           </motion.div>
 
+          {/* Quick Stats */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.5 }}
+            className="mb-6"
+          >
+            <QuickStats
+              completed={completedTasks}
+              pending={pendingTasks}
+              focusMinutes={focusMinutes}
+              productivity={productivity}
+            />
+          </motion.div>
+
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             {/* Tasks Section */}
             <div className="xl:col-span-2 space-y-6">
@@ -329,7 +338,7 @@ const Dashboard = () => {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1, duration: 0.5 }}
+                transition={{ delay: 0.2, duration: 0.5 }}
                 className="glass-card p-6"
               >
                 <div className="flex flex-col gap-4">
@@ -398,13 +407,13 @@ const Dashboard = () => {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.5 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
                 className="glass-card p-6"
               >
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="font-heading text-xl font-semibold">Your Tasks</h2>
                   <span className="text-sm text-muted-foreground">
-                    {tasks.filter(t => !t.is_completed).length} remaining
+                    {pendingTasks} remaining
                   </span>
                 </div>
 
@@ -422,7 +431,7 @@ const Dashboard = () => {
                     <p className="text-muted-foreground">No tasks yet. Add your first task above!</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
                     <AnimatePresence>
                       {tasks.map((task, index) => (
                         <motion.div
@@ -503,119 +512,65 @@ const Dashboard = () => {
                   </div>
                 )}
               </motion.div>
+
+              {/* Motivational Quote */}
+              <MotivationalQuote />
             </div>
 
             {/* Right Column */}
             <div className="space-y-6">
-              {/* Focus Mode */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.5 }}
-                className="glass-card p-6"
-              >
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                      <Target className="w-5 h-5 text-primary" />
-                    </div>
-                    <h2 className="font-heading text-lg font-semibold">Focus Mode</h2>
-                  </div>
-                  <button
-                    onClick={() => setFocusMode(!focusMode)}
-                    className={`w-12 h-6 rounded-full transition-colors ${
-                      focusMode ? "bg-primary" : "bg-muted"
-                    }`}
-                  >
-                    <div className={`w-5 h-5 bg-foreground rounded-full transition-transform ${
-                      focusMode ? "translate-x-6" : "translate-x-0.5"
-                    }`} />
-                  </button>
-                </div>
+              {/* Daily Streak */}
+              <DailyStreak 
+                currentStreak={3} 
+                longestStreak={7} 
+                tasksCompletedToday={todayCompleted} 
+              />
 
-                <AnimatePresence>
-                  {focusMode && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="space-y-6"
-                    >
-                      <div className="relative">
-                        <div className="text-center">
-                          <div className="text-5xl font-heading font-bold gradient-text mb-2">
-                            {formatTime(focusTime)}
-                          </div>
-                          <p className="text-sm text-muted-foreground">Pomodoro Timer</p>
-                        </div>
-                        {isTimerRunning && (
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="w-32 h-32 rounded-full border-4 border-primary/30 animate-pulse-ring" />
-                          </div>
-                        )}
-                      </div>
+              {/* Enhanced Focus Mode */}
+              <EnhancedTimer
+                focusMode={focusMode}
+                onFocusModeChange={setFocusMode}
+                onSessionComplete={handleSessionComplete}
+              />
 
-                      <div className="flex items-center justify-center gap-4">
-                        <Button
-                          variant="glass"
-                          size="icon"
-                          onClick={() => {
-                            setFocusTime(25 * 60);
-                            setIsTimerRunning(false);
-                          }}
-                        >
-                          <RotateCcw className="w-5 h-5" />
-                        </Button>
-                        <Button
-                          variant="glow"
-                          size="lg"
-                          onClick={() => setIsTimerRunning(!isTimerRunning)}
-                          className="px-8"
-                        >
-                          {isTimerRunning ? (
-                            <>
-                              <Pause className="w-5 h-5" />
-                              Pause
-                            </>
-                          ) : (
-                            <>
-                              <Play className="w-5 h-5" />
-                              Start
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
+              {/* Ambient Sounds */}
+              <AmbientSounds />
 
               {/* AI Suggestions */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.5 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
                 className="glass-card p-6"
               >
-                <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center">
                     <Sparkles className="w-5 h-5 text-accent" />
                   </div>
                   <h2 className="font-heading text-lg font-semibold">AI Suggestions</h2>
                 </div>
 
-                <div className="space-y-3">
-                  {aiSuggestions.map((suggestion, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, x: 10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.5 + index * 0.1 }}
-                      className="p-4 rounded-xl bg-muted/50 border border-border/50 hover:border-accent/30 transition-colors cursor-pointer"
-                    >
-                      <p className="text-sm text-muted-foreground leading-relaxed">{suggestion}</p>
-                    </motion.div>
-                  ))}
+                <div className="space-y-2">
+                  {aiSuggestions.map((suggestion, index) => {
+                    const Icon = suggestion.icon;
+                    return (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.6 + index * 0.1 }}
+                        whileHover={{ x: 4 }}
+                        className="flex items-start gap-3 p-3 rounded-xl bg-muted/50 border border-border/50 hover:border-accent/30 transition-all cursor-pointer group"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
+                          <Icon className="w-4 h-4 text-accent" />
+                        </div>
+                        <p className="text-sm text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
+                          {suggestion.text}
+                        </p>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               </motion.div>
             </div>
