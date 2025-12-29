@@ -138,56 +138,58 @@ export const EnhancedTimer = ({ focusMode, onFocusModeChange, onSessionComplete 
               className="space-y-6"
             >
               {/* Timer Display */}
-              <div className="relative flex items-center justify-center">
+              <div className="relative flex items-center justify-center py-8">
                 {/* Progress Ring */}
-                <svg className="absolute w-48 h-48 -rotate-90">
-                  <circle
-                    cx="96"
-                    cy="96"
-                    r="88"
-                    fill="none"
-                    stroke="hsl(var(--muted))"
-                    strokeWidth="6"
-                  />
-                  <motion.circle
-                    cx="96"
-                    cy="96"
-                    r="88"
-                    fill="none"
-                    stroke="url(#timer-gradient)"
-                    strokeWidth="6"
-                    strokeLinecap="round"
-                    strokeDasharray={553}
-                    strokeDashoffset={553 - (553 * progress) / 100}
-                    initial={false}
-                    animate={{ strokeDashoffset: 553 - (553 * progress) / 100 }}
-                    transition={{ duration: 0.5 }}
-                  />
-                  <defs>
-                    <linearGradient id="timer-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" />
-                      <stop offset="100%" stopColor="hsl(var(--accent))" />
-                    </linearGradient>
-                  </defs>
-                </svg>
+                <div className="relative w-48 h-48">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 192 192">
+                    <circle
+                      cx="96"
+                      cy="96"
+                      r="88"
+                      fill="none"
+                      stroke="hsl(var(--muted))"
+                      strokeWidth="6"
+                    />
+                    <motion.circle
+                      cx="96"
+                      cy="96"
+                      r="88"
+                      fill="none"
+                      stroke="url(#timer-gradient)"
+                      strokeWidth="6"
+                      strokeLinecap="round"
+                      strokeDasharray={553}
+                      strokeDashoffset={553 - (553 * progress) / 100}
+                      initial={false}
+                      animate={{ strokeDashoffset: 553 - (553 * progress) / 100 }}
+                      transition={{ duration: 0.5 }}
+                    />
+                    <defs>
+                      <linearGradient id="timer-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="hsl(var(--primary))" />
+                        <stop offset="100%" stopColor="hsl(var(--accent))" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
 
-                <div className="text-center z-10">
-                  <motion.div 
-                    className="text-5xl font-heading font-bold gradient-text"
-                    key={time}
-                    initial={{ scale: 1.1 }}
-                    animate={{ scale: 1 }}
-                  >
-                    {formatTime(time)}
-                  </motion.div>
-                  <p className="text-sm text-muted-foreground capitalize mt-1">{mode.replace("-", " ")}</p>
-                </div>
-
-                {isRunning && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-40 h-40 rounded-full border-4 border-primary/20 animate-ping" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <motion.div 
+                      className="text-4xl font-heading font-bold gradient-text"
+                      key={time}
+                      initial={{ scale: 1.1 }}
+                      animate={{ scale: 1 }}
+                    >
+                      {formatTime(time)}
+                    </motion.div>
+                    <p className="text-sm text-muted-foreground capitalize mt-1">{mode.replace("-", " ")}</p>
                   </div>
-                )}
+
+                  {isRunning && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-40 h-40 rounded-full border-4 border-primary/20 animate-ping" />
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Controls */}
