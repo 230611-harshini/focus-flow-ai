@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      custom_sounds: {
+        Row: {
+          created_at: string
+          file_path: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_path: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_path?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string

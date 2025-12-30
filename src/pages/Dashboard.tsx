@@ -33,6 +33,7 @@ import { AmbientSounds } from "@/components/dashboard/AmbientSounds";
 import { QuickStats } from "@/components/dashboard/QuickStats";
 import { MotivationalQuote } from "@/components/dashboard/MotivationalQuote";
 import { EnhancedTimer } from "@/components/dashboard/EnhancedTimer";
+import { MindReliefGames } from "@/components/dashboard/MindReliefGames";
 import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
@@ -515,6 +516,9 @@ const Dashboard = () => {
 
               {/* Motivational Quote */}
               <MotivationalQuote />
+
+              {/* Mind Relief Games */}
+              <MindReliefGames />
             </div>
 
             {/* Right Column */}

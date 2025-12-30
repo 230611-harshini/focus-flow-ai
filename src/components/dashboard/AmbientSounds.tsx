@@ -1,16 +1,18 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Volume2, VolumeX, CloudRain, Wind, Coffee, Waves, TreePine, Music2, Upload, X, Play, Pause } from "lucide-react";
+import { Volume2, VolumeX, CloudRain, Wind, Coffee, Waves, TreePine, Music2, Upload, X, Play, Pause, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
-// Free ambient sound URLs (using freesound.org CDN alternatives)
+// Working ambient sound URLs
 const soundUrls: Record<string, string> = {
-  rain: "https://cdn.freesound.org/previews/531/531947_5765285-lq.mp3",
-  wind: "https://cdn.freesound.org/previews/244/244399_4484508-lq.mp3",
-  cafe: "https://cdn.freesound.org/previews/458/458205_9497060-lq.mp3",
-  waves: "https://cdn.freesound.org/previews/527/527604_2595700-lq.mp3",
-  forest: "https://cdn.freesound.org/previews/580/580424_12517458-lq.mp3",
-  lofi: "https://cdn.freesound.org/previews/612/612095_5674468-lq.mp3",
+  rain: "https://assets.mixkit.co/active_storage/sfx/212/212-preview.mp3",
+  wind: "https://assets.mixkit.co/active_storage/sfx/1135/1135-preview.mp3",
+  cafe: "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3",
+  waves: "https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3",
+  forest: "https://assets.mixkit.co/active_storage/sfx/2875/2875-preview.mp3",
+  lofi: "https://assets.mixkit.co/active_storage/sfx/2935/2935-preview.mp3",
 };
 
 const defaultSounds = [
@@ -26,17 +28,52 @@ interface CustomSound {
   id: string;
   label: string;
   url: string;
+  isFromDb?: boolean;
 }
 
 export const AmbientSounds = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [activeSound, setActiveSound] = useState<string | null>(null);
   const [volume, setVolume] = useState(50);
   const [isPlaying, setIsPlaying] = useState(false);
   const [customSounds, setCustomSounds] = useState<CustomSound[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load custom sounds from database
+  useEffect(() => {
+    if (user) {
+      loadCustomSounds();
+    }
+  }, [user]);
+
+  const loadCustomSounds = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('custom_sounds')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      if (data) {
+        const sounds: CustomSound[] = data.map((sound: any) => ({
+          id: sound.id,
+          label: sound.name,
+          url: sound.file_path,
+          isFromDb: true
+        }));
+        setCustomSounds(sounds);
+      }
+    } catch (error) {
+      console.error('Error loading custom sounds:', error);
+    }
+  };
 
   // Handle audio playback
   useEffect(() => {
@@ -92,7 +129,7 @@ export const AmbientSounds = () => {
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -114,18 +151,76 @@ export const AmbientSounds = () => {
       return;
     }
 
-    const url = URL.createObjectURL(file);
-    const newSound: CustomSound = {
-      id: `custom-${Date.now()}`,
-      label: file.name.replace(/\.[^/.]+$/, "").slice(0, 10),
-      url,
-    };
+    // If user is logged in, upload to storage
+    if (user) {
+      setIsUploading(true);
+      try {
+        const fileName = `${user.id}/${Date.now()}-${file.name}`;
+        
+        // Upload to Supabase storage
+        const { error: uploadError } = await supabase.storage
+          .from('audio-files')
+          .upload(fileName, file);
 
-    setCustomSounds(prev => [...prev, newSound]);
-    toast({
-      title: "Sound added!",
-      description: `"${newSound.label}" is ready to play`,
-    });
+        if (uploadError) throw uploadError;
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('audio-files')
+          .getPublicUrl(fileName);
+
+        // Save to database
+        const { data: soundData, error: dbError } = await supabase
+          .from('custom_sounds')
+          .insert({
+            user_id: user.id,
+            name: file.name.replace(/\.[^/.]+$/, "").slice(0, 20),
+            file_path: urlData.publicUrl
+          })
+          .select()
+          .single();
+
+        if (dbError) throw dbError;
+
+        // Add to local state
+        const newSound: CustomSound = {
+          id: soundData.id,
+          label: soundData.name,
+          url: soundData.file_path,
+          isFromDb: true
+        };
+
+        setCustomSounds(prev => [...prev, newSound]);
+        toast({
+          title: "Sound uploaded!",
+          description: `"${newSound.label}" is saved and ready to play`,
+        });
+      } catch (error) {
+        console.error('Error uploading sound:', error);
+        toast({
+          title: "Upload failed",
+          description: "Could not save sound. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsUploading(false);
+      }
+    } else {
+      // Local only (not logged in)
+      const url = URL.createObjectURL(file);
+      const newSound: CustomSound = {
+        id: `custom-${Date.now()}`,
+        label: file.name.replace(/\.[^/.]+$/, "").slice(0, 10),
+        url,
+        isFromDb: false
+      };
+
+      setCustomSounds(prev => [...prev, newSound]);
+      toast({
+        title: "Sound added!",
+        description: `"${newSound.label}" is ready to play (sign in to save permanently)`,
+      });
+    }
 
     // Reset input
     if (fileInputRef.current) {
@@ -133,16 +228,42 @@ export const AmbientSounds = () => {
     }
   };
 
-  const removeCustomSound = (id: string) => {
+  const removeCustomSound = async (id: string) => {
     const sound = customSounds.find(s => s.id === id);
-    if (sound) {
-      URL.revokeObjectURL(sound.url);
-    }
-    setCustomSounds(prev => prev.filter(s => s.id !== id));
+    if (!sound) return;
+
+    // Stop if currently playing
     if (activeSound === id) {
       setActiveSound(null);
       setIsPlaying(false);
     }
+
+    // If from database, delete from storage and db
+    if (sound.isFromDb && user) {
+      try {
+        await supabase
+          .from('custom_sounds')
+          .delete()
+          .eq('id', id);
+
+        toast({
+          title: "Sound deleted",
+          description: "Sound removed from your library",
+        });
+      } catch (error) {
+        console.error('Error deleting sound:', error);
+        toast({
+          title: "Delete failed",
+          description: "Could not remove sound. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else if (!sound.isFromDb) {
+      URL.revokeObjectURL(sound.url);
+    }
+
+    setCustomSounds(prev => prev.filter(s => s.id !== id));
   };
 
   const allSounds = [...defaultSounds, ...customSounds.map(s => ({
@@ -180,10 +301,15 @@ export const AmbientSounds = () => {
         {/* Upload button */}
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="p-2 rounded-lg bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          disabled={isUploading}
+          className="p-2 rounded-lg bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
           title="Upload your own sound"
         >
-          <Upload className="w-4 h-4" />
+          {isUploading ? (
+            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Upload className="w-4 h-4" />
+          )}
         </button>
         <input
           ref={fileInputRef}
@@ -198,7 +324,7 @@ export const AmbientSounds = () => {
         {allSounds.map((sound) => {
           const Icon = sound.icon;
           const isActive = activeSound === sound.id;
-          const isCustom = sound.id.startsWith("custom-");
+          const isCustom = !defaultSounds.some(d => d.id === sound.id);
           
           return (
             <motion.div
@@ -249,6 +375,12 @@ export const AmbientSounds = () => {
           );
         })}
       </div>
+
+      {!user && customSounds.length > 0 && (
+        <p className="text-xs text-muted-foreground text-center mb-3">
+          Sign in to save your custom sounds permanently
+        </p>
+      )}
 
       <AnimatePresence>
         {activeSound && (
