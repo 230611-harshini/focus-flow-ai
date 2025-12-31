@@ -188,6 +188,71 @@ const Dashboard = () => {
   }).length;
   const productivity = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
 
+  // Calculate daily streak from task completion history
+  const calculateStreak = () => {
+    const completedDates = tasks
+      .filter(t => t.completed_at)
+      .map(t => new Date(t.completed_at!).toDateString())
+      .filter((date, index, self) => self.indexOf(date) === index)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+    if (completedDates.length === 0) return { current: 0, longest: 0 };
+
+    let currentStreak = 0;
+    let longestStreak = 0;
+    let tempStreak = 1;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // Check if today or yesterday has completions to start current streak
+    const firstDate = new Date(completedDates[0]);
+    firstDate.setHours(0, 0, 0, 0);
+    
+    if (firstDate.getTime() === today.getTime() || firstDate.getTime() === yesterday.getTime()) {
+      currentStreak = 1;
+      
+      for (let i = 1; i < completedDates.length; i++) {
+        const currentDate = new Date(completedDates[i - 1]);
+        const prevDate = new Date(completedDates[i]);
+        currentDate.setHours(0, 0, 0, 0);
+        prevDate.setHours(0, 0, 0, 0);
+        
+        const diffDays = Math.round((currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 1) {
+          currentStreak++;
+        } else {
+          break;
+        }
+      }
+    }
+
+    // Calculate longest streak
+    tempStreak = 1;
+    longestStreak = 1;
+    for (let i = 1; i < completedDates.length; i++) {
+      const currentDate = new Date(completedDates[i - 1]);
+      const prevDate = new Date(completedDates[i]);
+      currentDate.setHours(0, 0, 0, 0);
+      prevDate.setHours(0, 0, 0, 0);
+      
+      const diffDays = Math.round((currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 1) {
+        tempStreak++;
+        longestStreak = Math.max(longestStreak, tempStreak);
+      } else {
+        tempStreak = 1;
+      }
+    }
+
+    return { current: currentStreak, longest: Math.max(longestStreak, currentStreak) };
+  };
+
+  const streak = calculateStreak();
+
   // Greeting based on time
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
@@ -525,9 +590,9 @@ const Dashboard = () => {
             <div className="space-y-6">
               {/* Daily Streak */}
               <DailyStreak 
-                currentStreak={3} 
-                longestStreak={7} 
-                tasksCompletedToday={todayCompleted} 
+                currentStreak={streak.current} 
+                longestStreak={streak.longest} 
+                tasksCompletedToday={todayCompleted}
               />
 
               {/* Enhanced Focus Mode */}
