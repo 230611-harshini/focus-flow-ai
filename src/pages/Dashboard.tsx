@@ -593,6 +593,7 @@ const Dashboard = () => {
                 currentStreak={streak.current} 
                 longestStreak={streak.longest} 
                 tasksCompletedToday={todayCompleted}
+                completedDates={tasks.filter(t => t.completed_at).map(t => t.completed_at!)}
               />
 
               {/* Enhanced Focus Mode */}
