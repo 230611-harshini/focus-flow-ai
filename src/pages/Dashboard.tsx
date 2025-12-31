@@ -10,7 +10,6 @@ import {
   Settings, 
   LogOut,
   Plus,
-  Sparkles,
   Target,
   Check,
   Trash2,
@@ -19,8 +18,7 @@ import {
   ChevronDown,
   Menu,
   X,
-  Bell,
-  Lightbulb
+  Bell
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,6 +32,8 @@ import { QuickStats } from "@/components/dashboard/QuickStats";
 import { MotivationalQuote } from "@/components/dashboard/MotivationalQuote";
 import { EnhancedTimer } from "@/components/dashboard/EnhancedTimer";
 import { MindReliefGames } from "@/components/dashboard/MindReliefGames";
+import { FeatureNav } from "@/components/dashboard/FeatureNav";
+import { AISuggestions } from "@/components/dashboard/AISuggestions";
 import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
@@ -55,6 +55,7 @@ const Dashboard = () => {
   const [selectedTaskForReminder, setSelectedTaskForReminder] = useState<{ id: string; title: string; dueDate?: Date } | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [focusMinutes, setFocusMinutes] = useState(0);
+  const [activeFeature, setActiveFeature] = useState("streak");
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -62,13 +63,6 @@ const Dashboard = () => {
       navigate("/auth");
     }
   }, [user, authLoading, navigate]);
-
-  const aiSuggestions = [
-    { text: "Break down high-priority tasks into smaller subtasks", icon: Target },
-    { text: "Schedule focus time for demanding tasks in the morning", icon: Sparkles },
-    { text: "Set reminders 15 minutes before important deadlines", icon: Bell },
-    { text: "Use the Pomodoro technique for better concentration", icon: Lightbulb },
-  ];
 
   const handleAddTask = async () => {
     if (!newTask.trim()) return;
@@ -582,67 +576,84 @@ const Dashboard = () => {
               {/* Motivational Quote */}
               <MotivationalQuote />
 
-              {/* Mind Relief Games */}
-              <MindReliefGames />
             </div>
 
-            {/* Right Column */}
+            {/* Right Column - Feature Panel */}
             <div className="space-y-6">
-              {/* Daily Streak */}
-              <DailyStreak 
-                currentStreak={streak.current} 
-                longestStreak={streak.longest} 
-                tasksCompletedToday={todayCompleted}
-                completedDates={tasks.filter(t => t.completed_at).map(t => t.completed_at!)}
-              />
+              {/* Feature Navigation */}
+              <FeatureNav activeFeature={activeFeature} onFeatureChange={setActiveFeature} />
 
-              {/* Enhanced Focus Mode */}
-              <EnhancedTimer
-                focusMode={focusMode}
-                onFocusModeChange={setFocusMode}
-                onSessionComplete={handleSessionComplete}
-              />
+              {/* Feature Content */}
+              <AnimatePresence mode="wait">
+                {activeFeature === "streak" && (
+                  <motion.div
+                    key="streak"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <DailyStreak 
+                      currentStreak={streak.current} 
+                      longestStreak={streak.longest} 
+                      tasksCompletedToday={todayCompleted}
+                      completedDates={tasks.filter(t => t.completed_at).map(t => t.completed_at!)}
+                    />
+                  </motion.div>
+                )}
 
-              {/* Ambient Sounds */}
-              <AmbientSounds />
+                {activeFeature === "focus" && (
+                  <motion.div
+                    key="focus"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <EnhancedTimer
+                      focusMode={focusMode}
+                      onFocusModeChange={setFocusMode}
+                      onSessionComplete={handleSessionComplete}
+                    />
+                  </motion.div>
+                )}
 
-              {/* AI Suggestions */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.5 }}
-                className="glass-card p-6"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center">
-                    <Sparkles className="w-5 h-5 text-accent" />
-                  </div>
-                  <h2 className="font-heading text-lg font-semibold">AI Suggestions</h2>
-                </div>
+                {activeFeature === "sounds" && (
+                  <motion.div
+                    key="sounds"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <AmbientSounds />
+                  </motion.div>
+                )}
 
-                <div className="space-y-2">
-                  {aiSuggestions.map((suggestion, index) => {
-                    const Icon = suggestion.icon;
-                    return (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, x: 10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.6 + index * 0.1 }}
-                        whileHover={{ x: 4 }}
-                        className="flex items-start gap-3 p-3 rounded-xl bg-muted/50 border border-border/50 hover:border-accent/30 transition-all cursor-pointer group"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
-                          <Icon className="w-4 h-4 text-accent" />
-                        </div>
-                        <p className="text-sm text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
-                          {suggestion.text}
-                        </p>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </motion.div>
+                {activeFeature === "games" && (
+                  <motion.div
+                    key="games"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <MindReliefGames />
+                  </motion.div>
+                )}
+
+                {activeFeature === "ai" && (
+                  <motion.div
+                    key="ai"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <AISuggestions />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>
