@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+import { Link, useNavigate } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
 import {
   Zap,
@@ -15,14 +14,19 @@ import {
   CheckCircle2,
   Flame,
   Sparkles,
-  Calendar,
   ArrowUp,
   ArrowDown,
   Menu,
   X,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useTasks } from "@/hooks/useTasks";
+import { format, subDays, startOfDay, isSameDay } from "date-fns";
 
 const Insights = () => {
+  const navigate = useNavigate();
+  const { user, signOut, loading: authLoading } = useAuth();
+  const { tasks, loading: tasksLoading } = useTasks();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [animatedStats, setAnimatedStats] = useState({
     tasksCompleted: 0,
@@ -31,15 +35,80 @@ const Insights = () => {
     productivity: 0,
   });
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
+
+  // Calculate real stats from tasks
+  const completedTasks = tasks.filter(t => t.is_completed).length;
+  const totalTasks = tasks.length;
+  const productivity = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  // Calculate streak
+  const calculateStreak = () => {
+    const completedDates = tasks
+      .filter(t => t.completed_at)
+      .map(t => startOfDay(new Date(t.completed_at!)).getTime())
+      .filter((date, index, self) => self.indexOf(date) === index)
+      .sort((a, b) => b - a);
+
+    if (completedDates.length === 0) return 0;
+
+    let streak = 0;
+    const today = startOfDay(new Date()).getTime();
+    const yesterday = startOfDay(subDays(new Date(), 1)).getTime();
+
+    if (completedDates[0] === today || completedDates[0] === yesterday) {
+      streak = 1;
+      for (let i = 1; i < completedDates.length; i++) {
+        const diff = completedDates[i - 1] - completedDates[i];
+        if (diff === 86400000) { // 1 day in ms
+          streak++;
+        } else {
+          break;
+        }
+      }
+    }
+    return streak;
+  };
+
+  const currentStreak = calculateStreak();
+
+  // Calculate weekly data from actual tasks
+  const getWeeklyData = () => {
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = subDays(new Date(), i);
+      const dayTasks = tasks.filter(t => 
+        t.completed_at && isSameDay(new Date(t.completed_at), date)
+      ).length;
+      days.push({
+        day: format(date, "EEE"),
+        tasks: dayTasks,
+        focus: Math.round(dayTasks * 0.5 * 10) / 10, // Estimate focus hours
+      });
+    }
+    return days;
+  };
+
+  const weeklyData = getWeeklyData();
+  const maxTasks = Math.max(...weeklyData.map((d) => d.tasks), 1);
+  const totalFocusHours = weeklyData.reduce((sum, d) => sum + d.focus, 0);
+
   const stats = {
-    tasksCompleted: 47,
-    focusHours: 32,
-    streak: 12,
-    productivity: 87,
+    tasksCompleted: completedTasks,
+    focusHours: Math.round(totalFocusHours),
+    streak: currentStreak,
+    productivity: productivity,
   };
 
   // Animate stats on mount
   useEffect(() => {
+    if (tasksLoading) return;
+
     const duration = 1500;
     const steps = 60;
     const stepDuration = duration / steps;
@@ -61,19 +130,37 @@ const Insights = () => {
     }, stepDuration);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [tasksLoading, stats.tasksCompleted, stats.focusHours, stats.streak, stats.productivity]);
 
-  const weeklyData = [
-    { day: "Mon", tasks: 8, focus: 4.5 },
-    { day: "Tue", tasks: 12, focus: 5.2 },
-    { day: "Wed", tasks: 6, focus: 3.8 },
-    { day: "Thu", tasks: 10, focus: 4.8 },
-    { day: "Fri", tasks: 7, focus: 4.0 },
-    { day: "Sat", tasks: 3, focus: 2.0 },
-    { day: "Sun", tasks: 1, focus: 0.5 },
-  ];
+  // Calculate category stats from tasks
+  const getCategoryStats = () => {
+    const highPriority = tasks.filter(t => t.priority === "high");
+    const mediumPriority = tasks.filter(t => t.priority === "medium");
+    const lowPriority = tasks.filter(t => t.priority === "low");
 
-  const maxTasks = Math.max(...weeklyData.map((d) => d.tasks));
+    return [
+      { 
+        name: "High Priority", 
+        completed: highPriority.filter(t => t.is_completed).length, 
+        total: highPriority.length || 1, 
+        color: "from-priority-high to-red-400" 
+      },
+      { 
+        name: "Medium Priority", 
+        completed: mediumPriority.filter(t => t.is_completed).length, 
+        total: mediumPriority.length || 1, 
+        color: "from-priority-medium to-yellow-400" 
+      },
+      { 
+        name: "Low Priority", 
+        completed: lowPriority.filter(t => t.is_completed).length, 
+        total: lowPriority.length || 1, 
+        color: "from-priority-low to-green-400" 
+      },
+    ];
+  };
+
+  const categoryStats = getCategoryStats();
 
   const focusTips = [
     {
@@ -93,17 +180,31 @@ const Insights = () => {
     },
   ];
 
-  const categoryStats = [
-    { name: "Work", completed: 28, total: 32, color: "from-primary to-secondary" },
-    { name: "Personal", completed: 12, total: 15, color: "from-secondary to-accent" },
-    { name: "Learning", completed: 7, total: 10, color: "from-accent to-primary" },
-  ];
-
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", active: false },
     { icon: BarChart3, label: "Insights", path: "/insights", active: true },
     { icon: Settings, label: "Settings", path: "#", active: false },
   ];
+
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+  const userEmail = user?.email || '';
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+
+  if (authLoading || tasksLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -155,15 +256,15 @@ const Insights = () => {
         <div className="p-4 border-t border-border/50">
           <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-foreground font-semibold">
-              J
+              {userName.charAt(0).toUpperCase()}
             </div>
-            <div className="flex-1">
-              <p className="font-medium text-sm">John Doe</p>
-              <p className="text-xs text-muted-foreground">john@example.com</p>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm truncate">{userName}</p>
+              <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
             </div>
-            <Link to="/">
+            <button onClick={handleSignOut}>
               <LogOut className="w-5 h-5 text-muted-foreground hover:text-foreground cursor-pointer transition-colors" />
-            </Link>
+            </button>
           </div>
         </div>
       </motion.aside>
@@ -192,6 +293,30 @@ const Insights = () => {
             <p className="text-muted-foreground">Track your progress and optimize your workflow</p>
           </motion.div>
 
+          {/* Empty State */}
+          {tasks.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass-card p-8 text-center mb-8"
+            >
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <BarChart3 className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="font-heading text-xl font-semibold mb-2">No Data Yet</h3>
+              <p className="text-muted-foreground mb-4">
+                Start adding and completing tasks to see your productivity insights
+              </p>
+              <Link
+                to="/dashboard"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                Go to Dashboard
+              </Link>
+            </motion.div>
+          )}
+
           {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {[
@@ -200,7 +325,7 @@ const Insights = () => {
                 label: "Tasks Completed",
                 value: animatedStats.tasksCompleted,
                 suffix: "",
-                change: "+12%",
+                change: tasks.length > 0 ? `${totalTasks} total` : "Add tasks",
                 positive: true,
                 color: "from-primary/20 to-primary/5",
               },
@@ -209,7 +334,7 @@ const Insights = () => {
                 label: "Focus Hours",
                 value: animatedStats.focusHours,
                 suffix: "h",
-                change: "+8%",
+                change: "This week",
                 positive: true,
                 color: "from-secondary/20 to-secondary/5",
               },
@@ -218,8 +343,8 @@ const Insights = () => {
                 label: "Day Streak",
                 value: animatedStats.streak,
                 suffix: " days",
-                change: "Personal best!",
-                positive: true,
+                change: currentStreak > 0 ? "Keep it up!" : "Start today",
+                positive: currentStreak > 0,
                 color: "from-accent/20 to-accent/5",
               },
               {
@@ -227,8 +352,8 @@ const Insights = () => {
                 label: "Productivity",
                 value: animatedStats.productivity,
                 suffix: "%",
-                change: "+5%",
-                positive: true,
+                change: productivity >= 50 ? "Great work!" : "Keep going",
+                positive: productivity >= 50,
                 color: "from-primary/20 to-secondary/5",
               },
             ].map((stat, index) => (
@@ -245,8 +370,8 @@ const Insights = () => {
                     <div className="w-10 h-10 rounded-xl bg-background/50 flex items-center justify-center">
                       <stat.icon className="w-5 h-5 text-primary" />
                     </div>
-                    <div className={`flex items-center gap-1 text-xs ${stat.positive ? "text-priority-low" : "text-priority-high"}`}>
-                      {stat.positive ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+                    <div className={`flex items-center gap-1 text-xs ${stat.positive ? "text-priority-low" : "text-muted-foreground"}`}>
+                      {stat.positive && <ArrowUp className="w-3 h-3" />}
                       {stat.change}
                     </div>
                   </div>
@@ -296,13 +421,13 @@ const Insights = () => {
                         initial={{ height: 0 }}
                         animate={{ height: `${(day.tasks / maxTasks) * 100}%` }}
                         transition={{ delay: 0.5 + index * 0.1, duration: 0.5 }}
-                        className="w-5 bg-gradient-to-t from-primary to-primary/50 rounded-t-lg"
+                        className="w-5 bg-gradient-to-t from-primary to-primary/50 rounded-t-lg min-h-[4px]"
                       />
                       <motion.div
                         initial={{ height: 0 }}
                         animate={{ height: `${(day.focus / 6) * 100}%` }}
                         transition={{ delay: 0.6 + index * 0.1, duration: 0.5 }}
-                        className="w-5 bg-gradient-to-t from-accent to-accent/50 rounded-t-lg"
+                        className="w-5 bg-gradient-to-t from-accent to-accent/50 rounded-t-lg min-h-[4px]"
                       />
                     </div>
                     <span className="text-xs text-muted-foreground">{day.day}</span>
@@ -318,7 +443,7 @@ const Insights = () => {
               transition={{ delay: 0.4, duration: 0.5 }}
               className="glass-card p-6"
             >
-              <h2 className="font-heading text-xl font-semibold mb-6">Categories</h2>
+              <h2 className="font-heading text-xl font-semibold mb-6">By Priority</h2>
               <div className="space-y-6">
                 {categoryStats.map((category, index) => (
                   <motion.div
