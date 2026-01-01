@@ -137,14 +137,14 @@ export const DailyStreak = ({ currentStreak, longestStreak, tasksCompletedToday,
             </button>
           </div>
 
-          {/* Day Headers */}
-          <div className="grid grid-cols-7 gap-1 mb-1">
-            {["S", "M", "T", "W", "T", "F", "S"].map((day, i) => (
-              <div key={i} className="text-center text-xs text-muted-foreground font-medium py-1">
-                {day}
-              </div>
-            ))}
+      {/* Day Headers */}
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, i) => (
+          <div key={i} className="text-center text-xs text-muted-foreground font-medium py-1">
+            {day}
           </div>
+        ))}
+      </div>
 
           {/* Calendar Grid */}
           <div className="grid grid-cols-7 gap-1">
