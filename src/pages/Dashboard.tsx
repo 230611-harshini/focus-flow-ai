@@ -650,7 +650,7 @@ const Dashboard = () => {
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <AISuggestions />
+                    <AISuggestions tasks={tasks} />
                   </motion.div>
                 )}
               </AnimatePresence>
