@@ -47,15 +47,37 @@ const Dashboard = () => {
   const [newTask, setNewTask] = useState("");
   const [selectedPriority, setSelectedPriority] = useState<"high" | "medium" | "low">("medium");
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
-  const [focusMode, setFocusMode] = useState(false);
+  const [focusMode, setFocusMode] = useState(() => {
+    const saved = localStorage.getItem('focusMode');
+    return saved ? JSON.parse(saved) : false;
+  });
   const [editingTask, setEditingTask] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [selectedTaskForReminder, setSelectedTaskForReminder] = useState<{ id: string; title: string; dueDate?: Date } | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [focusMinutes, setFocusMinutes] = useState(0);
+  const [focusMinutes, setFocusMinutes] = useState(() => {
+    const today = new Date().toDateString();
+    const saved = localStorage.getItem('focusMinutes');
+    if (saved) {
+      const { date, minutes } = JSON.parse(saved);
+      return date === today ? minutes : 0;
+    }
+    return 0;
+  });
   const [activeFeature, setActiveFeature] = useState("streak");
+
+  // Persist focus mode state
+  useEffect(() => {
+    localStorage.setItem('focusMode', JSON.stringify(focusMode));
+  }, [focusMode]);
+
+  // Persist focus minutes with date
+  useEffect(() => {
+    const today = new Date().toDateString();
+    localStorage.setItem('focusMinutes', JSON.stringify({ date: today, minutes: focusMinutes }));
+  }, [focusMinutes]);
 
   // Redirect if not authenticated
   useEffect(() => {
