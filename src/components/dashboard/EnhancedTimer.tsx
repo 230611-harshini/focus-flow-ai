@@ -16,14 +16,16 @@ interface EnhancedTimerProps {
   focusMode: boolean;
   onFocusModeChange: (value: boolean) => void;
   onSessionComplete: () => void;
+  onFocusMinuteAdd?: () => void;
 }
 
-export const EnhancedTimer = ({ focusMode, onFocusModeChange, onSessionComplete }: EnhancedTimerProps) => {
+export const EnhancedTimer = ({ focusMode, onFocusModeChange, onSessionComplete, onFocusMinuteAdd }: EnhancedTimerProps) => {
   const { toast } = useToast();
   const [mode, setMode] = useState<TimerMode>("focus");
   const [time, setTime] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [sessions, setSessions] = useState(0);
+  const [secondsElapsed, setSecondsElapsed] = useState(0);
 
   const currentMode = timerModes.find(m => m.id === mode)!;
   const progress = ((currentMode.duration - time) / currentMode.duration) * 100;
@@ -33,9 +35,23 @@ export const EnhancedTimer = ({ focusMode, onFocusModeChange, onSessionComplete 
     if (isRunning && time > 0) {
       interval = setInterval(() => {
         setTime((prev) => prev - 1);
+        
+        // Track focus minutes in real-time
+        if (mode === "focus") {
+          setSecondsElapsed(prev => {
+            const newSeconds = prev + 1;
+            // Add a minute every 60 seconds
+            if (newSeconds >= 60) {
+              onFocusMinuteAdd?.();
+              return 0;
+            }
+            return newSeconds;
+          });
+        }
       }, 1000);
     } else if (time === 0) {
       setIsRunning(false);
+      setSecondsElapsed(0);
       if (mode === "focus") {
         setSessions(prev => prev + 1);
         onSessionComplete();
@@ -57,7 +73,7 @@ export const EnhancedTimer = ({ focusMode, onFocusModeChange, onSessionComplete 
       }
     }
     return () => clearInterval(interval);
-  }, [isRunning, time, mode, sessions, toast, onSessionComplete]);
+  }, [isRunning, time, mode, sessions, toast, onSessionComplete, onFocusMinuteAdd]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

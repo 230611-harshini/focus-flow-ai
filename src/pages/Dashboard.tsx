@@ -175,7 +175,11 @@ const Dashboard = () => {
   };
 
   const handleSessionComplete = () => {
-    setFocusMinutes(prev => prev + 25);
+    // Session complete doesn't add extra time since we track real-time now
+  };
+
+  const handleFocusMinuteAdd = () => {
+    setFocusMinutes(prev => prev + 1);
   };
 
   const priorityColors = {
@@ -636,6 +640,7 @@ const Dashboard = () => {
                       focusMode={focusMode}
                       onFocusModeChange={setFocusMode}
                       onSessionComplete={handleSessionComplete}
+                      onFocusMinuteAdd={handleFocusMinuteAdd}
                     />
                   </motion.div>
                 )}
