@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Flame, Trophy, TrendingUp, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isToday } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isToday } from "date-fns";
 
 interface DailyStreakProps {
   currentStreak: number;
@@ -9,6 +9,15 @@ interface DailyStreakProps {
   tasksCompletedToday: number;
   completedDates?: string[];
 }
+
+// Helper to compare dates by year, month, day only (ignoring time/timezone)
+const isSameDateLocal = (date1: Date, date2: Date) => {
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  );
+};
 
 export const DailyStreak = ({ currentStreak, longestStreak, tasksCompletedToday, completedDates = [] }: DailyStreakProps) => {
   const [showCalendar, setShowCalendar] = useState(false);
@@ -24,15 +33,17 @@ export const DailyStreak = ({ currentStreak, longestStreak, tasksCompletedToday,
   const emptyDays = Array.from({ length: startDayOfWeek }, (_, i) => i);
 
   const isDateCompleted = (date: Date) => {
-    return completedDates.some(completedDate => 
-      isSameDay(new Date(completedDate), date)
-    );
+    return completedDates.some(completedDate => {
+      const completed = new Date(completedDate);
+      return isSameDateLocal(completed, date);
+    });
   };
 
   const getCompletionCount = (date: Date) => {
-    return completedDates.filter(completedDate => 
-      isSameDay(new Date(completedDate), date)
-    ).length;
+    return completedDates.filter(completedDate => {
+      const completed = new Date(completedDate);
+      return isSameDateLocal(completed, date);
+    }).length;
   };
   
   return (
