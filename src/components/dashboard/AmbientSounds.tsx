@@ -5,14 +5,14 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-// Working ambient sound URLs
+// Working ambient sound URLs (using freesound.org and other reliable sources)
 const soundUrls: Record<string, string> = {
   rain: "https://assets.mixkit.co/active_storage/sfx/212/212-preview.mp3",
-  wind: "https://cdn.pixabay.com/download/audio/2022/03/10/audio_0f31a36176.mp3",
-  cafe: "https://cdn.pixabay.com/download/audio/2022/10/30/audio_946bd8cbe8.mp3",
-  waves: "https://cdn.pixabay.com/download/audio/2022/02/23/audio_ea70ad08e3.mp3",
-  forest: "https://cdn.pixabay.com/download/audio/2022/03/09/audio_dc6c94fa43.mp3",
-  lofi: "https://cdn.pixabay.com/download/audio/2022/05/27/audio_f7c7dc4969.mp3",
+  wind: "https://assets.mixkit.co/active_storage/sfx/2532/2532-preview.mp3",
+  cafe: "https://assets.mixkit.co/active_storage/sfx/1230/1230-preview.mp3",
+  waves: "https://assets.mixkit.co/active_storage/sfx/2513/2513-preview.mp3",
+  forest: "https://assets.mixkit.co/active_storage/sfx/2470/2470-preview.mp3",
+  lofi: "https://assets.mixkit.co/active_storage/sfx/242/242-preview.mp3",
 };
 
 const defaultSounds = [
