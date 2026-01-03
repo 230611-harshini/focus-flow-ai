@@ -250,7 +250,7 @@ const Insights = () => {
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", active: false },
     { icon: BarChart3, label: "Insights", path: "/insights", active: true },
-    { icon: Settings, label: "Settings", path: "#", active: false },
+    { icon: Settings, label: "Settings", path: "/settings", active: false },
   ];
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
