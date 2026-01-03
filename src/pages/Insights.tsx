@@ -29,12 +29,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { format, subDays, startOfDay, isSameDay } from "date-fns";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, RadialBarChart, RadialBar, Legend } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, RadialBarChart, RadialBar, Tooltip } from "recharts";
 
 const Insights = () => {
   const navigate = useNavigate();
@@ -554,8 +549,13 @@ const Insights = () => {
                             tickLine={false} 
                             tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
                           />
-                          <ChartTooltip 
-                            content={<ChartTooltipContent />}
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'hsl(var(--card))', 
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px',
+                              color: 'hsl(var(--foreground))'
+                            }}
                             cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }}
                           />
                           <Area
@@ -618,7 +618,14 @@ const Insights = () => {
                                   <Cell key={`cell-${index}`} fill={entry.fill} />
                                 ))}
                               </Pie>
-                              <ChartTooltip content={<ChartTooltipContent />} />
+                              <Tooltip 
+                                contentStyle={{ 
+                                  backgroundColor: 'hsl(var(--card))', 
+                                  border: '1px solid hsl(var(--border))',
+                                  borderRadius: '8px',
+                                  color: 'hsl(var(--foreground))'
+                                }}
+                              />
                             </PieChart>
                           </ResponsiveContainer>
                         </div>
@@ -776,7 +783,14 @@ const Insights = () => {
                             tickLine={false}
                             tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
                           />
-                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'hsl(var(--card))', 
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px',
+                              color: 'hsl(var(--foreground))'
+                            }}
+                          />
                           <Bar 
                             dataKey="tasks" 
                             fill="hsl(var(--primary))" 
