@@ -1,8 +1,9 @@
 'use client';
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Play, CheckCircle2, Sparkles, Target, Calendar, BarChart3 } from "lucide-react";
+import { X, Play, CheckCircle2, Sparkles, Target, Calendar, BarChart3, Flame, Volume2, Moon, Sun, MessageSquare, TrendingUp, Award, Settings, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
 
 interface DemoVideoModalProps {
   isOpen: boolean;
@@ -10,12 +11,29 @@ interface DemoVideoModalProps {
 }
 
 const DemoVideoModal = ({ isOpen, onClose }: DemoVideoModalProps) => {
-  const demoSteps = [
-    { icon: Sparkles, title: "Create Tasks", description: "Add tasks with AI suggestions" },
-    { icon: Target, title: "Focus Mode", description: "Deep work with Pomodoro timer" },
-    { icon: Calendar, title: "Smart Schedule", description: "Auto-organize your day" },
-    { icon: BarChart3, title: "Track Progress", description: "Visualize your productivity" },
+  const [activeScene, setActiveScene] = useState(0);
+
+  const scenes = [
+    { name: "Dashboard", icon: Target },
+    { name: "Insights", icon: BarChart3 },
+    { name: "Settings", icon: Settings },
   ];
+
+  const demoSteps = [
+    { icon: Flame, title: "Daily Streaks", description: "Track your consistency with calendar view" },
+    { icon: Volume2, title: "Ambient Sounds", description: "Focus with rain, lofi, forest sounds" },
+    { icon: Brain, title: "AI Assistant", description: "Task-aware productivity chatbot" },
+    { icon: TrendingUp, title: "Real Analytics", description: "Charts powered by your data" },
+  ];
+
+  useEffect(() => {
+    if (isOpen) {
+      const interval = setInterval(() => {
+        setActiveScene((prev) => (prev + 1) % 3);
+      }, 4000);
+      return () => clearInterval(interval);
+    }
+  }, [isOpen]);
 
   return (
     <AnimatePresence>
@@ -51,7 +69,7 @@ const DemoVideoModal = ({ isOpen, onClose }: DemoVideoModalProps) => {
 
             <div className="relative z-10">
               {/* Header */}
-              <div className="text-center mb-8">
+              <div className="text-center mb-6">
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
@@ -65,91 +83,324 @@ const DemoVideoModal = ({ isOpen, onClose }: DemoVideoModalProps) => {
                   See FocusFlow in Action
                 </h2>
                 <p className="text-muted-foreground">
-                  Watch how FocusFlow transforms your productivity
+                  Discover powerful features across Dashboard, Insights & Settings
                 </p>
               </div>
 
+              {/* Scene Tabs */}
+              <div className="flex justify-center gap-2 mb-4">
+                {scenes.map((scene, index) => (
+                  <button
+                    key={scene.name}
+                    onClick={() => setActiveScene(index)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      activeScene === index
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <scene.icon className="w-4 h-4" />
+                    {scene.name}
+                  </button>
+                ))}
+              </div>
+
               {/* Animated Demo Screen */}
-              <div className="relative rounded-2xl overflow-hidden bg-card border border-border mb-8">
+              <div className="relative rounded-2xl overflow-hidden bg-card border border-border mb-6">
                 <div className="aspect-video relative">
-                  {/* Mock App Interface Animation */}
-                  <div className="absolute inset-0 p-4 sm:p-6">
-                    {/* Mock Header */}
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                      className="flex items-center justify-between mb-6"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary" />
-                        <div className="h-4 w-24 bg-muted rounded animate-pulse" />
-                      </div>
-                      <div className="flex gap-2">
-                        <div className="h-8 w-20 bg-muted rounded-lg" />
-                        <div className="h-8 w-8 bg-primary/20 rounded-lg" />
-                      </div>
-                    </motion.div>
-
-                    {/* Mock Task List */}
-                    <div className="space-y-3">
-                      {[0, 1, 2, 3].map((index) => (
-                        <motion.div
-                          key={index}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.5 + index * 0.15 }}
-                          className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 border border-border/50"
-                        >
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ delay: 1 + index * 0.2, type: "spring" }}
-                          >
-                            <CheckCircle2 
-                              className={`w-5 h-5 ${index < 2 ? 'text-green-500' : 'text-muted-foreground/30'}`} 
-                            />
-                          </motion.div>
-                          <div className="flex-1">
-                            <div className={`h-4 rounded ${index < 2 ? 'w-3/4 bg-muted' : 'w-1/2 bg-muted'}`} />
-                            <div className="h-3 w-1/3 bg-muted/50 rounded mt-2" />
+                  <AnimatePresence mode="wait">
+                    {/* Dashboard Scene */}
+                    {activeScene === 0 && (
+                      <motion.div
+                        key="dashboard"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="absolute inset-0 p-4 sm:p-6"
+                      >
+                        {/* Mock Header */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary" />
+                            <span className="font-medium text-foreground">Dashboard</span>
                           </div>
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 1.5 + index * 0.1 }}
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              index === 0 ? 'bg-red-500/20 text-red-400' :
-                              index === 1 ? 'bg-yellow-500/20 text-yellow-400' :
-                              'bg-muted text-muted-foreground'
-                            }`}
-                          >
-                            {index === 0 ? 'High' : index === 1 ? 'Medium' : 'Low'}
-                          </motion.div>
-                        </motion.div>
-                      ))}
-                    </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-orange-500/20 text-orange-400 text-sm">
+                              <Flame className="w-4 h-4" />
+                              <span>7 Day Streak</span>
+                            </div>
+                          </div>
+                        </div>
 
-                    {/* Floating AI Suggestion */}
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      transition={{ delay: 2, type: "spring" }}
-                      className="absolute bottom-4 right-4 left-4 sm:left-auto sm:w-72 p-4 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 border border-primary/30 backdrop-blur-sm"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-primary/30 flex items-center justify-center flex-shrink-0">
-                          <Sparkles className="w-4 h-4 text-primary" />
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          {/* Focus Timer */}
+                          <motion.div
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ delay: 0.2 }}
+                            className="p-4 rounded-xl bg-muted/50 border border-border/50 text-center"
+                          >
+                            <div className="w-16 h-16 mx-auto mb-2 rounded-full border-4 border-primary flex items-center justify-center">
+                              <span className="text-lg font-bold text-primary">25:00</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">Focus Timer</p>
+                          </motion.div>
+
+                          {/* Streak Calendar */}
+                          <motion.div
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ delay: 0.3 }}
+                            className="p-4 rounded-xl bg-muted/50 border border-border/50"
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <Calendar className="w-4 h-4 text-primary" />
+                              <span className="text-sm font-medium">This Week</span>
+                            </div>
+                            <div className="flex gap-1">
+                              {[1, 1, 1, 1, 1, 0, 0].map((done, i) => (
+                                <div
+                                  key={i}
+                                  className={`w-6 h-6 rounded ${done ? 'bg-green-500' : 'bg-muted'}`}
+                                />
+                              ))}
+                            </div>
+                          </motion.div>
+
+                          {/* Ambient Sounds */}
+                          <motion.div
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ delay: 0.4 }}
+                            className="p-4 rounded-xl bg-muted/50 border border-border/50"
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <Volume2 className="w-4 h-4 text-primary" />
+                              <span className="text-sm font-medium">Ambient Sounds</span>
+                            </div>
+                            <div className="flex gap-2">
+                              {['🌧️', '🎵', '🌲'].map((emoji, i) => (
+                                <motion.div
+                                  key={i}
+                                  animate={{ scale: [1, 1.1, 1] }}
+                                  transition={{ delay: i * 0.2, repeat: Infinity, duration: 2 }}
+                                  className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-sm"
+                                >
+                                  {emoji}
+                                </motion.div>
+                              ))}
+                            </div>
+                          </motion.div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">AI Suggestion</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Focus on "Project Review" first - it's your highest priority!
-                          </p>
+
+                        {/* AI Chatbot */}
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.6 }}
+                          className="absolute bottom-4 right-4 left-4 sm:left-auto sm:w-72 p-4 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 border border-primary/30 backdrop-blur-sm"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-primary/30 flex items-center justify-center flex-shrink-0">
+                              <MessageSquare className="w-4 h-4 text-primary" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-foreground">AI Assistant</p>
+                              <motion.p
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.8 }}
+                                className="text-xs text-muted-foreground mt-1"
+                              >
+                                You have 3 tasks today. Start with "Design Review" - it's highest priority!
+                              </motion.p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      </motion.div>
+                    )}
+
+                    {/* Insights Scene */}
+                    {activeScene === 1 && (
+                      <motion.div
+                        key="insights"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="absolute inset-0 p-4 sm:p-6"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="font-medium text-foreground">Insights & Analytics</span>
+                          <div className="flex gap-2">
+                            {['Overview', 'Trends', 'AI Tips'].map((tab, i) => (
+                              <span
+                                key={tab}
+                                className={`px-3 py-1 rounded-lg text-xs ${i === 0 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+                              >
+                                {tab}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* Chart */}
+                          <motion.div
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ delay: 0.2 }}
+                            className="p-4 rounded-xl bg-muted/50 border border-border/50"
+                          >
+                            <div className="flex items-center gap-2 mb-3">
+                              <TrendingUp className="w-4 h-4 text-primary" />
+                              <span className="text-sm font-medium">Weekly Activity</span>
+                            </div>
+                            <div className="flex items-end gap-1 h-20">
+                              {[40, 65, 45, 80, 55, 90, 70].map((h, i) => (
+                                <motion.div
+                                  key={i}
+                                  initial={{ height: 0 }}
+                                  animate={{ height: `${h}%` }}
+                                  transition={{ delay: 0.3 + i * 0.1, type: "spring" }}
+                                  className="flex-1 bg-gradient-to-t from-primary to-primary/50 rounded-t"
+                                />
+                              ))}
+                            </div>
+                          </motion.div>
+
+                          {/* Stats */}
+                          <motion.div
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ delay: 0.4 }}
+                            className="p-4 rounded-xl bg-muted/50 border border-border/50"
+                          >
+                            <div className="grid grid-cols-2 gap-3">
+                              {[
+                                { label: 'Completed', value: '24', color: 'text-green-400' },
+                                { label: 'Focus Hours', value: '18h', color: 'text-blue-400' },
+                                { label: 'Streak', value: '7 days', color: 'text-orange-400' },
+                                { label: 'Score', value: '92%', color: 'text-purple-400' },
+                              ].map((stat, i) => (
+                                <motion.div
+                                  key={stat.label}
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: 0.5 + i * 0.1 }}
+                                  className="text-center"
+                                >
+                                  <p className={`text-lg font-bold ${stat.color}`}>{stat.value}</p>
+                                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+                                </motion.div>
+                              ))}
+                            </div>
+                          </motion.div>
+                        </div>
+
+                        {/* Achievements */}
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.6 }}
+                          className="mt-4 p-4 rounded-xl bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Award className="w-6 h-6 text-yellow-400" />
+                            <div>
+                              <p className="text-sm font-medium text-foreground">Achievement Unlocked!</p>
+                              <p className="text-xs text-muted-foreground">7-Day Streak Master 🔥</p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      </motion.div>
+                    )}
+
+                    {/* Settings Scene */}
+                    {activeScene === 2 && (
+                      <motion.div
+                        key="settings"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="absolute inset-0 p-4 sm:p-6"
+                      >
+                        <span className="font-medium text-foreground block mb-4">Settings</span>
+
+                        <div className="space-y-4">
+                          {/* Profile */}
+                          <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="p-4 rounded-xl bg-muted/50 border border-border/50"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-foreground font-bold">
+                                JD
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-foreground">John Doe</p>
+                                <p className="text-xs text-muted-foreground">john@example.com</p>
+                              </div>
+                            </div>
+                          </motion.div>
+
+                          {/* Theme Toggle */}
+                          <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="p-4 rounded-xl bg-muted/50 border border-border/50"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Moon className="w-4 h-4 text-primary" />
+                                <span className="text-sm font-medium">Appearance</span>
+                              </div>
+                              <div className="flex gap-1">
+                                {[
+                                  { icon: Sun, label: 'Light' },
+                                  { icon: Moon, label: 'Dark' },
+                                ].map((mode, i) => (
+                                  <motion.div
+                                    key={mode.label}
+                                    whileHover={{ scale: 1.05 }}
+                                    className={`p-2 rounded-lg ${i === 1 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                                  >
+                                    <mode.icon className="w-4 h-4" />
+                                  </motion.div>
+                                ))}
+                              </div>
+                            </div>
+                          </motion.div>
+
+                          {/* Feedback */}
+                          <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.4 }}
+                            className="p-4 rounded-xl bg-muted/50 border border-border/50"
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <MessageSquare className="w-4 h-4 text-primary" />
+                              <span className="text-sm font-medium">Send Feedback</span>
+                            </div>
+                            <div className="flex gap-1">
+                              {['😢', '😐', '😊', '😄', '🤩'].map((emoji, i) => (
+                                <motion.div
+                                  key={i}
+                                  whileHover={{ scale: 1.2 }}
+                                  className={`w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer ${i === 4 ? 'bg-primary/30 ring-2 ring-primary' : 'bg-muted/50'}`}
+                                >
+                                  {emoji}
+                                </motion.div>
+                              ))}
+                            </div>
+                          </motion.div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   {/* Animated cursor */}
                   <motion.div
@@ -201,7 +452,7 @@ const DemoVideoModal = ({ isOpen, onClose }: DemoVideoModalProps) => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1.2 }}
-                className="text-center mt-8"
+                className="text-center mt-6"
               >
                 <Button variant="hero" size="lg" onClick={onClose}>
                   Try It Now - Free
