@@ -294,8 +294,50 @@ const Auth = () => {
             }}
           >
             <div className="glass-card h-full rounded-3xl overflow-hidden grid lg:grid-cols-2">
-              {/* Left - Form */}
-              <div className="flex flex-col justify-center p-8 lg:p-10 order-2 lg:order-1">
+              {/* Left - Branding */}
+              <div className="hidden lg:flex flex-col justify-between p-10 bg-gradient-to-bl from-secondary/10 via-accent/5 to-transparent relative overflow-hidden">
+                <div className="absolute inset-0">
+                  <div className="absolute top-20 left-10 w-32 h-32 bg-secondary/20 rounded-full blur-2xl" />
+                  <div className="absolute bottom-10 right-10 w-40 h-40 bg-accent/20 rounded-full blur-2xl" />
+                </div>
+                
+                <div className="relative z-10">
+                  <Link to="/" className="flex items-center gap-3 mb-8">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-secondary to-accent flex items-center justify-center shadow-lg">
+                      <Zap className="w-6 h-6 text-primary-foreground" />
+                    </div>
+                    <span className="font-heading font-bold text-2xl text-foreground">FocusFlow</span>
+                  </Link>
+                  
+                  <h2 className="font-heading text-4xl font-bold text-foreground mb-4">
+                    Start your
+                    <span className="block bg-gradient-to-r from-secondary via-accent to-primary bg-clip-text text-transparent">
+                      productivity journey
+                    </span>
+                  </h2>
+                  <p className="text-muted-foreground text-lg">
+                    Join thousands of professionals achieving their goals with FocusFlow.
+                  </p>
+                </div>
+
+                <div className="relative z-10 space-y-4">
+                  {features.map((feature, index) => (
+                    <motion.div
+                      key={feature}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 + 0.3 }}
+                      className="flex items-center gap-3 text-foreground/80"
+                    >
+                      <CheckCircle2 className="w-5 h-5 text-secondary" />
+                      <span>{feature}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right - Form */}
+              <div className="flex flex-col justify-center p-8 lg:p-10">
                 <div className="lg:hidden mb-8">
                   <Link to="/" className="flex items-center gap-2 mb-6">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary via-secondary to-accent flex items-center justify-center">
@@ -411,48 +453,6 @@ const Auth = () => {
                     Sign in
                   </button>
                 </p>
-              </div>
-
-              {/* Right - Branding */}
-              <div className="hidden lg:flex flex-col justify-between p-10 bg-gradient-to-bl from-secondary/10 via-accent/5 to-transparent relative overflow-hidden order-1 lg:order-2">
-                <div className="absolute inset-0">
-                  <div className="absolute top-20 left-10 w-32 h-32 bg-secondary/20 rounded-full blur-2xl" />
-                  <div className="absolute bottom-10 right-10 w-40 h-40 bg-accent/20 rounded-full blur-2xl" />
-                </div>
-                
-                <div className="relative z-10">
-                  <Link to="/" className="flex items-center gap-3 mb-8">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-secondary to-accent flex items-center justify-center shadow-lg">
-                      <Zap className="w-6 h-6 text-primary-foreground" />
-                    </div>
-                    <span className="font-heading font-bold text-2xl text-foreground">FocusFlow</span>
-                  </Link>
-                  
-                  <h2 className="font-heading text-4xl font-bold text-foreground mb-4">
-                    Start your
-                    <span className="block bg-gradient-to-r from-secondary via-accent to-primary bg-clip-text text-transparent">
-                      productivity journey
-                    </span>
-                  </h2>
-                  <p className="text-muted-foreground text-lg">
-                    Join thousands of professionals achieving their goals with FocusFlow.
-                  </p>
-                </div>
-
-                <div className="relative z-10 space-y-4">
-                  {features.map((feature, index) => (
-                    <motion.div
-                      key={feature}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 + 0.3 }}
-                      className="flex items-center gap-3 text-foreground/80"
-                    >
-                      <CheckCircle2 className="w-5 h-5 text-secondary" />
-                      <span>{feature}</span>
-                    </motion.div>
-                  ))}
-                </div>
               </div>
             </div>
           </div>
