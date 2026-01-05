@@ -30,7 +30,29 @@ const Auth = () => {
   const [isFlipping, setIsFlipping] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp, signInWithGoogle, user } = useAuth();
+
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await signInWithGoogle();
+      if (error) {
+        toast({
+          title: "Google sign in failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -261,11 +283,23 @@ const Auth = () => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <Button variant="glass" size="lg" className="w-full" disabled>
+                  <Button 
+                    variant="glass" 
+                    size="lg" 
+                    className="w-full" 
+                    onClick={handleGoogleSignIn}
+                    disabled={isLoading}
+                  >
                     <Chrome className="w-5 h-5" />
                     Google
                   </Button>
-                  <Button variant="glass" size="lg" className="w-full" disabled>
+                  <Button 
+                    variant="glass" 
+                    size="lg" 
+                    className="w-full opacity-50 cursor-not-allowed" 
+                    disabled
+                    title="GitHub sign in coming soon"
+                  >
                     <Github className="w-5 h-5" />
                     GitHub
                   </Button>
@@ -433,11 +467,23 @@ const Auth = () => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <Button variant="glass" size="lg" className="w-full" disabled>
+                  <Button 
+                    variant="glass" 
+                    size="lg" 
+                    className="w-full" 
+                    onClick={handleGoogleSignIn}
+                    disabled={isLoading}
+                  >
                     <Chrome className="w-5 h-5" />
                     Google
                   </Button>
-                  <Button variant="glass" size="lg" className="w-full" disabled>
+                  <Button 
+                    variant="glass" 
+                    size="lg" 
+                    className="w-full opacity-50 cursor-not-allowed" 
+                    disabled
+                    title="GitHub sign in coming soon"
+                  >
                     <Github className="w-5 h-5" />
                     GitHub
                   </Button>
