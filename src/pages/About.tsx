@@ -1,21 +1,22 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Github, Linkedin, Twitter, Mail, Heart, Sparkles, Target, Users, Globe } from "lucide-react";
+import { ArrowLeft, Github, Linkedin, Mail, Heart, Sparkles, Target, Users, Globe, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import creatorPhoto from "@/assets/harshini-photo.jpeg";
 
 const About = () => {
   const creator = {
-    name: "Your Name",
-    role: "Full Stack Developer & Designer",
-    bio: "Passionate about building productivity tools that help people achieve their goals. FocusFlow was born from a personal need to stay organized and focused in an increasingly distracting world.",
-    avatar: "YN", // Initials for avatar
-    location: "Your City, Country",
-    email: "your.email@example.com",
+    name: "Harshini S",
+    role: "AI Student at RMK Engineering College",
+    bio: "A passionate AI enthusiast currently pursuing studies at RMK Engineering College, Chennai. Dedicated to exploring the frontiers of artificial intelligence and building innovative solutions that make a difference. FocusFlow represents a commitment to helping students and professionals achieve peak productivity through smart, AI-driven tools.",
+    photo: creatorPhoto,
+    location: "Chennai, India",
+    email: "harshini.srinivasan21@gmail.com",
+    phone: "9840197981",
     socials: {
-      github: "https://github.com/yourusername",
-      linkedin: "https://linkedin.com/in/yourusername",
-      twitter: "https://twitter.com/yourusername",
+      github: "https://github.com/230611-harshini",
+      linkedin: "https://www.linkedin.com/in/harshini-s-130538290",
     },
   };
 
@@ -81,9 +82,13 @@ const About = () => {
         >
           <Card className="p-8 mb-12 bg-card/50 backdrop-blur-sm border-border/50">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-              {/* Avatar */}
-              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-foreground text-3xl font-bold shadow-lg">
-                {creator.avatar}
+              {/* Photo */}
+              <div className="w-28 h-28 rounded-2xl overflow-hidden shadow-lg ring-4 ring-primary/20">
+                <img 
+                  src={creator.photo} 
+                  alt={creator.name}
+                  className="w-full h-full object-cover"
+                />
               </div>
 
               {/* Info */}
@@ -98,13 +103,14 @@ const About = () => {
                   {creator.bio}
                 </p>
 
-                {/* Social Links */}
-                <div className="flex items-center justify-center sm:justify-start gap-3">
+                {/* Contact & Social Links */}
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
                   <a
                     href={creator.socials.github}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-2.5 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
+                    className="p-2.5 rounded-xl bg-muted/50 hover:bg-primary hover:text-primary-foreground transition-colors group"
+                    title="GitHub"
                   >
                     <Github className="w-5 h-5" />
                   </a>
@@ -112,23 +118,24 @@ const About = () => {
                     href={creator.socials.linkedin}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-2.5 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
+                    className="p-2.5 rounded-xl bg-muted/50 hover:bg-primary hover:text-primary-foreground transition-colors group"
+                    title="LinkedIn"
                   >
                     <Linkedin className="w-5 h-5" />
                   </a>
                   <a
-                    href={creator.socials.twitter}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2.5 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
-                  >
-                    <Twitter className="w-5 h-5" />
-                  </a>
-                  <a
                     href={`mailto:${creator.email}`}
-                    className="p-2.5 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
+                    className="p-2.5 rounded-xl bg-muted/50 hover:bg-primary hover:text-primary-foreground transition-colors group"
+                    title="Email"
                   >
                     <Mail className="w-5 h-5" />
+                  </a>
+                  <a
+                    href={`tel:${creator.phone}`}
+                    className="p-2.5 rounded-xl bg-muted/50 hover:bg-primary hover:text-primary-foreground transition-colors group"
+                    title="Phone"
+                  >
+                    <Phone className="w-5 h-5" />
                   </a>
                 </div>
               </div>
