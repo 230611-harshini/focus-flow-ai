@@ -4,6 +4,7 @@ import { Slider } from '@/components/ui/slider';
 import { Gamepad2, Clock, AlertTriangle, X, RotateCcw, Pause, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { useBrowserNotifications } from '@/hooks/useBrowserNotifications';
 
 interface Game {
   id: string;
@@ -219,6 +220,14 @@ export const MindReliefGames = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const { sendBreakEndReminder, permission, requestPermission } = useBrowserNotifications();
+
+  // Request notification permission when game starts
+  useEffect(() => {
+    if (selectedGame && permission === 'default') {
+      requestPermission();
+    }
+  }, [selectedGame, permission, requestPermission]);
 
   const startGame = (gameId: string) => {
     setSelectedGame(gameId);
@@ -253,6 +262,8 @@ export const MindReliefGames = () => {
               description: "Your break is over. Time to focus on your tasks!",
               duration: 10000,
             });
+            // Send browser push notification
+            sendBreakEndReminder('games');
             return 0;
           }
           // Show warning at 1 minute remaining

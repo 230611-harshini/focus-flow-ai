@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Volume2, VolumeX, CloudRain, Wind, Coffee, Waves, TreePine, Music2, Upload, X, Play, Pause, Trash2 } from "lucide-react";
+import { Volume2, VolumeX, CloudRain, Wind, Coffee, Waves, TreePine, Music2, Upload, X, Play, Pause, Trash2, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useBrowserNotifications } from "@/hooks/useBrowserNotifications";
+import { Slider } from "@/components/ui/slider";
+import { toast as sonnerToast } from "sonner";
 
 // Working ambient sound URLs (using freesound.org and other reliable sources)
 const soundUrls: Record<string, string> = {
@@ -34,14 +37,56 @@ interface CustomSound {
 export const AmbientSounds = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { sendBreakEndReminder, permission, requestPermission } = useBrowserNotifications();
   const [activeSound, setActiveSound] = useState<string | null>(null);
   const [volume, setVolume] = useState(50);
   const [isPlaying, setIsPlaying] = useState(false);
   const [customSounds, setCustomSounds] = useState<CustomSound[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [breakTimeLimit, setBreakTimeLimit] = useState([10]); // minutes
+  const [breakTimeRemaining, setBreakTimeRemaining] = useState<number | null>(null);
+  const [breakTimerEnabled, setBreakTimerEnabled] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const breakTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Break timer logic
+  useEffect(() => {
+    if (isPlaying && breakTimerEnabled && breakTimeRemaining !== null) {
+      breakTimerRef.current = setInterval(() => {
+        setBreakTimeRemaining(prev => {
+          if (prev === null) return null;
+          if (prev <= 1) {
+            // Time's up - send notification
+            sendBreakEndReminder('music');
+            sonnerToast.warning("Break time is over!", {
+              description: "Time to get back to work. You've been listening for a while!",
+              duration: 10000,
+            });
+            setIsPlaying(false);
+            if (audioRef.current) {
+              audioRef.current.pause();
+            }
+            return 0;
+          }
+          // Warning at 1 minute
+          if (prev === 60) {
+            sonnerToast.info("1 minute remaining!", {
+              description: "Wrap up your break soon.",
+            });
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (breakTimerRef.current) {
+        clearInterval(breakTimerRef.current);
+      }
+    };
+  }, [isPlaying, breakTimerEnabled, breakTimeRemaining, sendBreakEndReminder]);
 
   // Load custom sounds from database
   useEffect(() => {
@@ -123,10 +168,30 @@ export const AmbientSounds = () => {
   const toggleSound = (soundId: string) => {
     if (activeSound === soundId) {
       setIsPlaying(!isPlaying);
+      if (!isPlaying && breakTimerEnabled) {
+        // Resume timer
+        if (breakTimeRemaining === 0 || breakTimeRemaining === null) {
+          setBreakTimeRemaining(breakTimeLimit[0] * 60);
+        }
+      }
     } else {
       setActiveSound(soundId);
       setIsPlaying(true);
+      // Start break timer if enabled
+      if (breakTimerEnabled) {
+        setBreakTimeRemaining(breakTimeLimit[0] * 60);
+        // Request notification permission
+        if (permission === 'default') {
+          requestPermission();
+        }
+      }
     }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -318,6 +383,55 @@ export const AmbientSounds = () => {
           onChange={handleFileUpload}
           className="hidden"
         />
+      </div>
+
+      {/* Break Timer Setting */}
+      <div className="mb-4 p-3 bg-muted/30 rounded-xl">
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={breakTimerEnabled}
+              onChange={(e) => {
+                setBreakTimerEnabled(e.target.checked);
+                if (!e.target.checked) {
+                  setBreakTimeRemaining(null);
+                }
+              }}
+              className="rounded border-border"
+            />
+            <Clock className="w-4 h-4" />
+            Break Reminder
+          </label>
+          {breakTimerEnabled && (
+            <span className="text-sm font-medium">
+              {breakTimeRemaining !== null && isPlaying 
+                ? formatTime(breakTimeRemaining) 
+                : `${breakTimeLimit[0]} min`}
+            </span>
+          )}
+        </div>
+        {breakTimerEnabled && (
+          <>
+            <Slider
+              value={breakTimeLimit}
+              onValueChange={(value) => {
+                setBreakTimeLimit(value);
+                if (!isPlaying) {
+                  setBreakTimeRemaining(value[0] * 60);
+                }
+              }}
+              min={5}
+              max={30}
+              step={5}
+              className="w-full"
+              disabled={isPlaying}
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              Get reminded to get back to work after this time
+            </p>
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-4">
