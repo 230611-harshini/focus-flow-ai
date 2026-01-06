@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useBrowserNotifications } from "@/hooks/useBrowserNotifications";
 import { ReminderModal } from "@/components/ReminderModal";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
 import { DailyStreak } from "@/components/dashboard/DailyStreak";
@@ -42,6 +43,7 @@ const Dashboard = () => {
   const { user, signOut, loading: authLoading } = useAuth();
   const { tasks, loading: tasksLoading, addTask, updateTask, toggleComplete, deleteTask, addReminder } = useTasks();
   const { unreadCount } = useNotifications();
+  const { sendTaskReminder, permission, requestPermission } = useBrowserNotifications();
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [newTask, setNewTask] = useState("");
@@ -127,6 +129,11 @@ const Dashboard = () => {
   const handleSetReminder = async (reminder: { time: Date; type: 'email' | 'in_app' | 'both' }) => {
     if (!selectedTaskForReminder || !user) return;
 
+    // Request notification permission if not granted
+    if (permission === 'default') {
+      await requestPermission();
+    }
+
     await addReminder(selectedTaskForReminder.id, reminder.time, reminder.type);
 
     const { data: profile } = await supabase
@@ -136,14 +143,21 @@ const Dashboard = () => {
       .single();
 
     const timeUntilReminder = reminder.time.getTime() - Date.now();
+    const taskTitle = selectedTaskForReminder.title;
     
     if (timeUntilReminder > 0 && timeUntilReminder < 24 * 60 * 60 * 1000) {
+      // Set up browser push notification
+      setTimeout(() => {
+        sendTaskReminder(taskTitle);
+      }, timeUntilReminder);
+
+      // Set up backend notification (email/in-app)
       setTimeout(async () => {
         try {
           const { error } = await supabase.functions.invoke('send-reminder', {
             body: {
               taskId: selectedTaskForReminder.id,
-              taskTitle: selectedTaskForReminder.title,
+              taskTitle: taskTitle,
               dueDate: selectedTaskForReminder.dueDate?.toISOString() || new Date().toISOString(),
               userEmail: profile?.email || user.email,
               userName: profile?.full_name || user.email?.split('@')[0],
