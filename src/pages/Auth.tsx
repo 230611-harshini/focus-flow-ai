@@ -12,8 +12,6 @@ import {
   Lock, 
   User,
   ArrowRight,
-  Github,
-  Chrome,
   CheckCircle2,
   Sparkles
 } from "lucide-react";
@@ -30,29 +28,7 @@ const Auth = () => {
   const [isFlipping, setIsFlipping] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signIn, signUp, signInWithGoogle, user } = useAuth();
-
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    try {
-      const { error } = await signInWithGoogle();
-      if (error) {
-        toast({
-          title: "Google sign in failed",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "An unexpected error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { signIn, signUp, user } = useAuth();
 
   useEffect(() => {
     if (user) {
@@ -273,37 +249,6 @@ const Auth = () => {
                   </Button>
                 </form>
 
-                <div className="relative my-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-border" />
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-card text-muted-foreground">Or continue with</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Button 
-                    variant="glass" 
-                    size="lg" 
-                    className="w-full" 
-                    onClick={handleGoogleSignIn}
-                    disabled={isLoading}
-                  >
-                    <Chrome className="w-5 h-5" />
-                    Google
-                  </Button>
-                  <Button 
-                    variant="glass" 
-                    size="lg" 
-                    className="w-full opacity-50 cursor-not-allowed" 
-                    disabled
-                    title="GitHub sign in coming soon"
-                  >
-                    <Github className="w-5 h-5" />
-                    GitHub
-                  </Button>
-                </div>
 
                 <p className="text-center mt-6 text-muted-foreground">
                   Don't have an account?{" "}
@@ -457,37 +402,6 @@ const Auth = () => {
                   </Button>
                 </form>
 
-                <div className="relative my-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-border" />
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-card text-muted-foreground">Or continue with</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Button 
-                    variant="glass" 
-                    size="lg" 
-                    className="w-full" 
-                    onClick={handleGoogleSignIn}
-                    disabled={isLoading}
-                  >
-                    <Chrome className="w-5 h-5" />
-                    Google
-                  </Button>
-                  <Button 
-                    variant="glass" 
-                    size="lg" 
-                    className="w-full opacity-50 cursor-not-allowed" 
-                    disabled
-                    title="GitHub sign in coming soon"
-                  >
-                    <Github className="w-5 h-5" />
-                    GitHub
-                  </Button>
-                </div>
 
                 <p className="text-center mt-6 text-muted-foreground">
                   Already have an account?{" "}
