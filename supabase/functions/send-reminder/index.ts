@@ -4,7 +4,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 interface ReminderPayload {
@@ -17,21 +17,59 @@ interface ReminderPayload {
 }
 
 serve(async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Authenticate the user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Missing authorization' }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userSupabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await userSupabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userId = claimsData.claims.sub;
+
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { taskId, taskTitle, dueDate, userEmail, userName, reminderType }: ReminderPayload = await req.json();
 
-    console.log("Processing reminder for task:", taskId, "email:", userEmail);
+    // Verify user owns this task
+    const { data: task, error: taskError } = await userSupabase
+      .from('tasks')
+      .select('id, user_id')
+      .eq('id', taskId)
+      .single();
+
+    if (taskError || !task) {
+      return new Response(JSON.stringify({ error: 'Task not found or access denied' }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log("Processing reminder for task:", taskId, "user:", userId);
 
     const results = {
       emailSent: false,
@@ -107,31 +145,20 @@ serve(async (req: Request): Promise<Response> => {
 
     // Create in-app notification if reminder type includes in_app
     if (reminderType === 'in_app' || reminderType === 'both') {
-      // Get user_id from profiles table using email
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('email', userEmail)
-        .single();
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: userId,
+          title: `Reminder: ${taskTitle}`,
+          message: `Your task "${taskTitle}" is due soon. Don't forget to complete it!`,
+          type: 'reminder',
+          task_id: taskId,
+        });
 
-      if (profileError) {
-        console.error("Error fetching profile:", profileError);
-      } else if (profile) {
-        const { error: notifError } = await supabase
-          .from('notifications')
-          .insert({
-            user_id: profile.user_id,
-            title: `Reminder: ${taskTitle}`,
-            message: `Your task "${taskTitle}" is due soon. Don't forget to complete it!`,
-            type: 'reminder',
-            task_id: taskId,
-          });
-
-        if (notifError) {
-          console.error("Error creating notification:", notifError);
-        } else {
-          results.notificationCreated = true;
-        }
+      if (notifError) {
+        console.error("Error creating notification:", notifError);
+      } else {
+        results.notificationCreated = true;
       }
     }
 
