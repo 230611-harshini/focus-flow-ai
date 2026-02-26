@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, RotateCcw, Target, Coffee, Brain, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { FocusGuardian } from "./FocusGuardian";
 
 type TimerMode = "focus" | "short-break" | "long-break";
 
@@ -27,8 +28,24 @@ export const EnhancedTimer = ({ focusMode, onFocusModeChange, onSessionComplete,
   const [sessions, setSessions] = useState(0);
   const [secondsElapsed, setSecondsElapsed] = useState(0);
 
+  const [guardianPaused, setGuardianPaused] = useState(false);
+
   const currentMode = timerModes.find(m => m.id === mode)!;
   const progress = ((currentMode.duration - time) / currentMode.duration) * 100;
+
+  const handleGuardianPause = useCallback(() => {
+    if (isRunning) {
+      setIsRunning(false);
+      setGuardianPaused(true);
+    }
+  }, [isRunning]);
+
+  const handleGuardianResume = useCallback(() => {
+    if (guardianPaused) {
+      setIsRunning(true);
+      setGuardianPaused(false);
+    }
+  }, [guardianPaused]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -221,7 +238,10 @@ export const EnhancedTimer = ({ focusMode, onFocusModeChange, onSessionComplete,
                 <Button
                   variant="glow"
                   size="lg"
-                  onClick={() => setIsRunning(!isRunning)}
+                  onClick={() => {
+                    setIsRunning(!isRunning);
+                    setGuardianPaused(false);
+                  }}
                   className="px-10 h-14"
                 >
                   {isRunning ? (
@@ -232,11 +252,18 @@ export const EnhancedTimer = ({ focusMode, onFocusModeChange, onSessionComplete,
                   ) : (
                     <>
                       <Play className="w-5 h-5 mr-2" />
-                      Start
+                      {guardianPaused ? "Resume" : "Start"}
                     </>
                   )}
                 </Button>
               </div>
+
+              {/* AI Focus Guardian */}
+              <FocusGuardian
+                isTimerRunning={isRunning}
+                onPauseTimer={handleGuardianPause}
+                onResumeTimer={handleGuardianResume}
+              />
             </motion.div>
           )}
         </AnimatePresence>
