@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,14 +22,33 @@ interface ReminderModalProps {
 
 export const ReminderModal = ({ isOpen, onClose, onSave, taskTitle, dueDate }: ReminderModalProps) => {
   const [reminderType, setReminderType] = useState<'email' | 'in_app' | 'both'>('both');
-  const [reminderDate, setReminderDate] = useState(
-    dueDate ? new Date(dueDate.getTime() - 60 * 60 * 1000).toISOString().slice(0, 16) : ''
-  );
+  
+  const getDefaultValues = () => {
+    if (!dueDate) return { date: '', hour: '12', minute: '00', period: 'PM' as const };
+    const d = new Date(dueDate.getTime() - 60 * 60 * 1000);
+    const h = d.getHours();
+    return {
+      date: d.toISOString().slice(0, 10),
+      hour: String(h === 0 ? 12 : h > 12 ? h - 12 : h).padStart(2, '0'),
+      minute: String(d.getMinutes()).padStart(2, '0'),
+      period: (h >= 12 ? 'PM' : 'AM') as 'AM' | 'PM',
+    };
+  };
+
+  const defaults = useMemo(getDefaultValues, [dueDate]);
+  const [reminderDateStr, setReminderDateStr] = useState(defaults.date);
+  const [hour, setHour] = useState(defaults.hour);
+  const [minute, setMinute] = useState(defaults.minute);
+  const [period, setPeriod] = useState<'AM' | 'PM'>(defaults.period);
 
   const handleSave = () => {
-    if (!reminderDate) return;
+    if (!reminderDateStr || !hour || !minute) return;
+    let h = parseInt(hour);
+    if (period === 'AM' && h === 12) h = 0;
+    if (period === 'PM' && h !== 12) h += 12;
+    const dateTime = new Date(`${reminderDateStr}T${String(h).padStart(2, '0')}:${minute}:00`);
     onSave({
-      time: new Date(reminderDate),
+      time: dateTime,
       type: reminderType,
     });
     onClose();
@@ -90,12 +109,57 @@ export const ReminderModal = ({ isOpen, onClose, onSave, taskTitle, dueDate }: R
                     <Clock className="w-4 h-4" />
                     Reminder Time
                   </Label>
-                  <Input
-                    type="datetime-local"
-                    value={reminderDate}
-                    onChange={(e) => setReminderDate(e.target.value)}
-                    className="w-full"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      type="date"
+                      value={reminderDateStr}
+                      onChange={(e) => setReminderDateStr(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Input
+                      type="number"
+                      min={1}
+                      max={12}
+                      value={hour}
+                      onChange={(e) => setHour(e.target.value.slice(0, 2))}
+                      className="w-16 text-center"
+                      placeholder="HH"
+                    />
+                    <span className="flex items-center text-muted-foreground font-bold">:</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={59}
+                      value={minute}
+                      onChange={(e) => setMinute(e.target.value.slice(0, 2).padStart(2, '0'))}
+                      className="w-16 text-center"
+                      placeholder="MM"
+                    />
+                    <div className="flex rounded-lg border border-border overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setPeriod('AM')}
+                        className={`px-3 py-2 text-sm font-medium transition-colors ${
+                          period === 'AM'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                        }`}
+                      >
+                        AM
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPeriod('PM')}
+                        className={`px-3 py-2 text-sm font-medium transition-colors ${
+                          period === 'PM'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                        }`}
+                      >
+                        PM
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 {dueDate && (
@@ -147,7 +211,7 @@ export const ReminderModal = ({ isOpen, onClose, onSave, taskTitle, dueDate }: R
                   variant="glow" 
                   onClick={handleSave} 
                   className="flex-1"
-                  disabled={!reminderDate}
+                  disabled={!reminderDateStr || !hour || !minute}
                 >
                   <Bell className="w-4 h-4 mr-2" />
                   Set Reminder
