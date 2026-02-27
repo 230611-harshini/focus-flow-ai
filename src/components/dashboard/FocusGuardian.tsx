@@ -159,15 +159,24 @@ export const FocusGuardian = ({ isTimerRunning, onPauseTimer, onResumeTimer }: F
         )}
       </AnimatePresence>
 
-      {/* Camera Preview (hidden but functional) */}
-      <video
-        ref={videoRef}
-        className="hidden"
-        muted
-        playsInline
-        width={320}
-        height={240}
-      />
+      {/* Camera Preview */}
+      <div className={`${enabled && status !== "error" ? "mb-3 rounded-xl overflow-hidden border border-border/50 relative" : "hidden"}`}>
+        <video
+          ref={videoRef}
+          className="w-full h-auto rounded-xl"
+          muted
+          playsInline
+          width={320}
+          height={240}
+          style={{ transform: "scaleX(-1)" }}
+        />
+        {enabled && isFacePresent && status === "active" && (
+          <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-green-500/80 backdrop-blur-sm text-white text-[10px] font-medium px-2 py-1 rounded-full">
+            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            Live
+          </div>
+        )}
+      </div>
 
       {/* Status Display */}
       {enabled && (
