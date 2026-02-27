@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, Shield, Camera, AlertTriangle, Volume2 } from "lucide-react";
+import { Eye, EyeOff, Shield, Camera, AlertTriangle, Volume2, Brain, Wind, Coffee } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFaceDetection } from "@/hooks/useFaceDetection";
+import { useMoodDetection, Mood } from "@/hooks/useMoodDetection";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -18,6 +19,8 @@ export const FocusGuardian = ({ isTimerRunning, onPauseTimer, onResumeTimer }: F
   const [showPrivacyNotice, setShowPrivacyNotice] = useState(false);
   const [nudgePlayed, setNudgePlayed] = useState(false);
   const [userName, setUserName] = useState("User");
+  const [showBreathingExercise, setShowBreathingExercise] = useState(false);
+  const [breathPhase, setBreathPhase] = useState<"inhale" | "hold" | "exhale">("inhale");
 
   useEffect(() => {
     const fetchName = async () => {
@@ -38,7 +41,7 @@ export const FocusGuardian = ({ isTimerRunning, onPauseTimer, onResumeTimer }: F
     utterance.pitch = 1.0;
     utterance.volume = 0.7;
     speechSynthesis.speak(utterance);
-    setTimeout(() => setNudgePlayed(false), 30000); // cooldown
+    setTimeout(() => setNudgePlayed(false), 30000);
   }, [nudgePlayed, userName]);
 
   const handleFaceDisappeared = useCallback(() => {
@@ -67,6 +70,21 @@ export const FocusGuardian = ({ isTimerRunning, onPauseTimer, onResumeTimer }: F
       absenceThresholdMs: 10000,
     });
 
+  const handleMoodChange = useCallback((mood: Mood, info: { suggestion?: string; label: string; emoji: string }) => {
+    if (mood === "tired" || mood === "stressed") {
+      toast({
+        title: `${info.emoji} Mood detected: ${info.label}`,
+        description: info.suggestion,
+      });
+    }
+  }, [toast]);
+
+  const { currentMood, moodInfo, moodHistory, isModelLoaded } = useMoodDetection({
+    videoRef,
+    isActive: enabled && status === "active",
+    onMoodChange: handleMoodChange,
+  });
+
   const handleEnable = () => {
     setShowPrivacyNotice(true);
   };
@@ -80,7 +98,39 @@ export const FocusGuardian = ({ isTimerRunning, onPauseTimer, onResumeTimer }: F
   const handleDisable = () => {
     setEnabled(false);
     stopCamera();
+    setShowBreathingExercise(false);
   };
+
+  // Breathing exercise timer
+  useEffect(() => {
+    if (!showBreathingExercise) return;
+    const phases: Array<"inhale" | "hold" | "exhale"> = ["inhale", "hold", "exhale"];
+    const durations = [4000, 4000, 4000];
+    let phaseIndex = 0;
+    setBreathPhase("inhale");
+
+    const cycle = () => {
+      phaseIndex = (phaseIndex + 1) % 3;
+      setBreathPhase(phases[phaseIndex]);
+    };
+
+    let timeout: NodeJS.Timeout;
+    const run = () => {
+      timeout = setTimeout(() => {
+        cycle();
+        run();
+      }, durations[phaseIndex]);
+    };
+    run();
+
+    // Auto-close after 2 minutes
+    const autoClose = setTimeout(() => setShowBreathingExercise(false), 120000);
+
+    return () => {
+      clearTimeout(timeout);
+      clearTimeout(autoClose);
+    };
+  }, [showBreathingExercise]);
 
   const statusConfig = {
     idle: { color: "text-muted-foreground", bg: "bg-muted/50", label: "Off" },
@@ -91,6 +141,14 @@ export const FocusGuardian = ({ isTimerRunning, onPauseTimer, onResumeTimer }: F
   };
 
   const currentStatus = statusConfig[status];
+
+  const moodColorMap: Record<Mood, string> = {
+    focused: "border-green-500/50 bg-green-500/5",
+    neutral: "border-blue-400/50 bg-blue-400/5",
+    distracted: "border-yellow-500/50 bg-yellow-500/5",
+    tired: "border-orange-500/50 bg-orange-500/5",
+    stressed: "border-red-400/50 bg-red-400/5",
+  };
 
   return (
     <motion.div
@@ -111,6 +169,9 @@ export const FocusGuardian = ({ isTimerRunning, onPauseTimer, onResumeTimer }: F
                 style={{ backgroundColor: "currentColor" }}
               />
               <span className={`text-xs ${currentStatus.color}`}>{currentStatus.label}</span>
+              {enabled && isModelLoaded && isFacePresent && (
+                <span className="text-xs ml-1">{moodInfo.emoji}</span>
+              )}
             </div>
           </div>
         </div>
@@ -172,6 +233,39 @@ export const FocusGuardian = ({ isTimerRunning, onPauseTimer, onResumeTimer }: F
         )}
       </AnimatePresence>
 
+      {/* Breathing Exercise Overlay */}
+      <AnimatePresence>
+        {showBreathingExercise && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="absolute inset-0 z-20 bg-card/95 backdrop-blur-xl p-5 flex flex-col items-center justify-center rounded-2xl"
+          >
+            <Wind className="w-6 h-6 text-primary mb-3" />
+            <h4 className="font-heading font-semibold text-sm mb-4">Breathing Exercise</h4>
+            <motion.div
+              animate={{
+                scale: breathPhase === "inhale" ? 1.4 : breathPhase === "hold" ? 1.4 : 1,
+                opacity: breathPhase === "hold" ? 0.7 : 1,
+              }}
+              transition={{ duration: 4, ease: "easeInOut" }}
+              className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center mb-4"
+            >
+              <span className="text-sm font-medium capitalize">{breathPhase}</span>
+            </motion.div>
+            <p className="text-xs text-muted-foreground mb-4">
+              {breathPhase === "inhale" && "Breathe in slowly..."}
+              {breathPhase === "hold" && "Hold your breath..."}
+              {breathPhase === "exhale" && "Breathe out gently..."}
+            </p>
+            <Button variant="ghost" size="sm" onClick={() => setShowBreathingExercise(false)} className="text-xs">
+              Close
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Camera Preview / Distracted Overlay */}
       <div className={`${enabled && status !== "error" ? "mb-3 rounded-xl overflow-hidden border border-border/50 relative" : "hidden"}`}>
         <video
@@ -195,9 +289,22 @@ export const FocusGuardian = ({ isTimerRunning, onPauseTimer, onResumeTimer }: F
           </motion.div>
         )}
         {isFacePresent && status === "active" && (
-          <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-green-500/80 backdrop-blur-sm text-white text-[10px] font-medium px-2 py-1 rounded-full">
-            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-            Live
+          <div className="absolute top-2 left-2 right-2 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 bg-green-500/80 backdrop-blur-sm text-white text-[10px] font-medium px-2 py-1 rounded-full">
+              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              Live
+            </div>
+            {isModelLoaded && (
+              <motion.div
+                key={currentMood}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className={`flex items-center gap-1.5 backdrop-blur-sm text-[10px] font-medium px-2 py-1 rounded-full bg-black/50 text-white`}
+              >
+                <span>{moodInfo.emoji}</span>
+                <span>{moodInfo.label}</span>
+              </motion.div>
+            )}
           </div>
         )}
       </div>
@@ -229,6 +336,82 @@ export const FocusGuardian = ({ isTimerRunning, onPauseTimer, onResumeTimer }: F
             )}
           </div>
 
+          {/* Mood Display */}
+          {isFacePresent && isModelLoaded && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className={`p-3 rounded-xl border ${moodColorMap[currentMood]} transition-colors`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <Brain className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs font-medium">Mood Analysis</span>
+                </div>
+                <span className="text-sm">{moodInfo.emoji} {moodInfo.label}</span>
+              </div>
+
+              {/* Mood History Bar */}
+              {moodHistory.length > 1 && (
+                <div className="flex gap-0.5 mt-2">
+                  {moodHistory.slice(-20).map((mood, i) => (
+                    <div
+                      key={i}
+                      className={`flex-1 h-1.5 rounded-full transition-colors ${
+                        mood === "focused" ? "bg-green-500" :
+                        mood === "neutral" ? "bg-blue-400" :
+                        mood === "distracted" ? "bg-yellow-500" :
+                        mood === "tired" ? "bg-orange-500" :
+                        "bg-red-400"
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Mood Suggestion */}
+              {moodInfo.suggestion && (
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-2 text-xs text-muted-foreground flex items-start gap-2"
+                >
+                  <span className="shrink-0 mt-0.5">💡</span>
+                  <span>{moodInfo.suggestion}</span>
+                </motion.div>
+              )}
+
+              {/* Action Buttons for tired/stressed */}
+              {(currentMood === "tired" || currentMood === "stressed") && (
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowBreathingExercise(true)}
+                    className="text-[10px] h-7 px-2"
+                  >
+                    <Wind className="w-3 h-3 mr-1" />
+                    Breathe
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      toast({
+                        title: "☕ Break suggested",
+                        description: "Take a 5-minute break to recharge!",
+                      });
+                    }}
+                    className="text-[10px] h-7 px-2"
+                  >
+                    <Coffee className="w-3 h-3 mr-1" />
+                    Take Break
+                  </Button>
+                </div>
+              )}
+            </motion.div>
+          )}
+
           {/* Nudge indicator */}
           {!isFacePresent && (
             <motion.div
@@ -237,7 +420,7 @@ export const FocusGuardian = ({ isTimerRunning, onPauseTimer, onResumeTimer }: F
               className="flex items-center gap-2 text-xs text-muted-foreground"
             >
               <Volume2 className="w-3.5 h-3.5" />
-              <span>Voice nudge sent: "Hey, stay focused. You've got this."</span>
+              <span>Voice nudge sent: "Hey {userName}, stay focused."</span>
             </motion.div>
           )}
 
@@ -249,7 +432,7 @@ export const FocusGuardian = ({ isTimerRunning, onPauseTimer, onResumeTimer }: F
                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full"
               />
-              <span className="text-xs text-muted-foreground ml-3">Loading AI model...</span>
+              <span className="text-xs text-muted-foreground ml-3">Loading AI models...</span>
             </div>
           )}
 
@@ -265,7 +448,7 @@ export const FocusGuardian = ({ isTimerRunning, onPauseTimer, onResumeTimer }: F
       {/* Inactive description */}
       {!enabled && (
         <p className="text-xs text-muted-foreground">
-          Enable AI-powered attention monitoring to auto-pause your timer when you step away and get gentle nudges to stay focused.
+          Enable AI-powered attention monitoring with mood analysis to auto-pause your timer, detect fatigue, and get personalized focus support.
         </p>
       )}
     </motion.div>
