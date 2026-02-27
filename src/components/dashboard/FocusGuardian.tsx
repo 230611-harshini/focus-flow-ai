@@ -1,9 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, Shield, Camera, AlertTriangle, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFaceDetection } from "@/hooks/useFaceDetection";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FocusGuardianProps {
   isTimerRunning: boolean;
@@ -16,17 +17,29 @@ export const FocusGuardian = ({ isTimerRunning, onPauseTimer, onResumeTimer }: F
   const [enabled, setEnabled] = useState(false);
   const [showPrivacyNotice, setShowPrivacyNotice] = useState(false);
   const [nudgePlayed, setNudgePlayed] = useState(false);
+  const [userName, setUserName] = useState("User");
+
+  useEffect(() => {
+    const fetchName = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.from("profiles").select("full_name").eq("user_id", user.id).single();
+        if (data?.full_name) setUserName(data.full_name.split(" ")[0]);
+      }
+    };
+    fetchName();
+  }, []);
 
   const playNudge = useCallback(() => {
     if (nudgePlayed) return;
     setNudgePlayed(true);
-    const utterance = new SpeechSynthesisUtterance("Hey, stay focused. You've got this.");
+    const utterance = new SpeechSynthesisUtterance(`Hey ${userName}, stay focused. You've got this.`);
     utterance.rate = 0.9;
     utterance.pitch = 1.0;
     utterance.volume = 0.7;
     speechSynthesis.speak(utterance);
     setTimeout(() => setNudgePlayed(false), 30000); // cooldown
-  }, [nudgePlayed]);
+  }, [nudgePlayed, userName]);
 
   const handleFaceDisappeared = useCallback(() => {
     if (isTimerRunning) {
@@ -51,7 +64,7 @@ export const FocusGuardian = ({ isTimerRunning, onPauseTimer, onResumeTimer }: F
     useFaceDetection({
       onFaceDisappeared: handleFaceDisappeared,
       onFaceReappeared: handleFaceReappeared,
-      absenceThresholdMs: 15000,
+      absenceThresholdMs: 10000,
     });
 
   const handleEnable = () => {
@@ -159,18 +172,29 @@ export const FocusGuardian = ({ isTimerRunning, onPauseTimer, onResumeTimer }: F
         )}
       </AnimatePresence>
 
-      {/* Camera Preview */}
+      {/* Camera Preview / Distracted Overlay */}
       <div className={`${enabled && status !== "error" ? "mb-3 rounded-xl overflow-hidden border border-border/50 relative" : "hidden"}`}>
         <video
           ref={videoRef}
-          className="w-full h-auto rounded-xl"
+          className={`w-full h-auto rounded-xl ${!isFacePresent && enabled ? "hidden" : ""}`}
           muted
           playsInline
           width={320}
           height={240}
           style={{ transform: "scaleX(-1)" }}
         />
-        {enabled && isFacePresent && status === "active" && (
+        {!isFacePresent && enabled && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="w-full aspect-video bg-destructive/10 rounded-xl flex flex-col items-center justify-center gap-3"
+          >
+            <AlertTriangle className="w-10 h-10 text-destructive animate-pulse" />
+            <p className="text-sm font-semibold text-destructive">{userName} is distracted</p>
+            <p className="text-xs text-muted-foreground">Camera paused • Come back to resume</p>
+          </motion.div>
+        )}
+        {isFacePresent && status === "active" && (
           <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-green-500/80 backdrop-blur-sm text-white text-[10px] font-medium px-2 py-1 rounded-full">
             <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
             Live
